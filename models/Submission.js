@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const submissionSchema = new mongoose.Schema({
   student: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // Assuming student is a User with role 'Student'
+    ref: "User",
     required: true,
   },
   assignment: {
@@ -17,13 +17,13 @@ const submissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Submitted", "Graded", "Late", "Pending"], // Added Pending as a possible status
+    enum: ["Submitted", "Graded", "Late", "Pending"],
     default: "Submitted",
   },
   marks: {
     type: Number,
     min: 0,
-    max: 100, // Assuming marks are out of 100, adjust if needed
+    max: 100,
     default: null,
   },
   feedback: {
@@ -33,6 +33,11 @@ const submissionSchema = new mongoose.Schema({
   file: {
     type: String,
     trim: true,
+  },
+  // References the AssignedClass this submission belongs to
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "AssignedClass",
   },
 }, { timestamps: true });
 

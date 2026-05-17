@@ -1,6 +1,7 @@
 import dbConnect from '@/dbConnect';
 import User from '@/models/User';
 import Course from '@/models/Course';
+import AssignedClass from '@/models/AssignedClass';
 import Assignment from '@/models/Assignment';
 import Submission from '@/models/Submission';
 import ActivityLog from '@/models/ActivityLog';
@@ -27,6 +28,7 @@ export async function GET(req) {
       totalInstructors,
       totalStudents,
       totalCourses,
+      totalAssignedClasses,
       totalActivities,
       pendingTasks,
       recentLogs,
@@ -38,6 +40,7 @@ export async function GET(req) {
       User.countDocuments({ role: 'Instructor' }),
       User.countDocuments({ role: 'Student' }),
       Course.countDocuments(),
+      AssignedClass.countDocuments(),
       ActivityLog.countDocuments(),
       InstructorActivity.countDocuments({ status: 'Pending' }),
       ActivityLog.find().sort({ timestamp: -1 }).limit(8).populate('user', 'name role').lean(),
@@ -96,6 +99,7 @@ export async function GET(req) {
           totalInstructors,
           totalStudents,
           totalCourses,
+          totalAssignedClasses,
           totalActivities,
           pendingTasks,
         },

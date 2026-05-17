@@ -1,6 +1,8 @@
 import dbConnect from '@/dbConnect';
 import Submission from '@/models/Submission';
 import Assignment from '@/models/Assignment';
+import AssignedClass from '@/models/AssignedClass';
+import Class from '@/models/Class';
 import { instructorAuthMiddleware, errorResponse, successResponse } from '@/middleware/instructor';
 
 export async function GET(req) {
@@ -30,7 +32,8 @@ export async function GET(req) {
         select: 'title subject totalMarks course',
         populate: {
           path: 'course',
-          select: 'code name'
+          select: 'subject section classId',
+          populate: { path: 'classId', select: 'program className semester' }
         }
       })
       .sort({ submittedDate: -1 });

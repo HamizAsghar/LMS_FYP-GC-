@@ -28,7 +28,8 @@ export async function GET(req) {
       completedTasks,
       pendingTasks,
       uploadedAssignments,
-      totalStudentsCount,
+      totalStudentsFromCourses,
+      totalStudentsFromAssigned,
       instructorProfile
     ] = await Promise.all([
       InstructorActivity.countDocuments({ instructor: instructorId }),
@@ -39,6 +40,10 @@ export async function GET(req) {
         { $match: { instructor: instructorId } },
         { $group: { _id: null, total: { $sum: "$students" } } }
       ]),
+      AssignedClass.aggregate([
+        { $match: { teacherId: instructorId } },
+        { $group: { _id: null, total: { $sum: { $size: "$enrolledStudents" } } } }
+      ]),
       Instructor.findOne({ userId: instructorId })
     ]);
 
@@ -47,7 +52,7 @@ export async function GET(req) {
       completedTasks,
       pendingTasks,
       uploadedAssignments,
-      totalStudents: totalStudentsCount[0]?.total || 0,
+      totalStudents: (totalStudentsFromCourses[0]?.total || 0) + (totalStudentsFromAssigned[0]?.total || 0),
       avgRating: instructorProfile?.rating || 0
     };
 
@@ -91,13 +96,16 @@ export async function GET(req) {
       };
     }));
 
-    const mappedAssigned = assignedClasses.map(ac => ({
-      _id: ac._id,
-      id: ac._id,
-      name: ac.classId ? `${ac.classId.program} Sec ${ac.section} - ${ac.subject}` : ac.subject,
-      students: 0,
-      assignments: 0,
-      progress: 0
+    const mappedAssigned = await Promise.all(assignedClasses.map(async (ac) => {
+      const assignmentCount = await Assignment.countDocuments({ course: ac._id });
+      return {
+        _id: ac._id,
+        id: ac._id,
+        name: ac.classId ? `${ac.classId.program} Sec ${ac.section} - ${ac.subject}` : ac.subject,
+        students: ac.enrolledStudents?.length || 0,
+        assignments: assignmentCount,
+        progress: 0
+      };
     }));
 
     const myCourses = [...mappedAssigned, ...mappedCourses].slice(0, 4);
@@ -125,7 +133,7 @@ export async function GET(req) {
         student: s.student.name,
         assignment: s.assignment.title,
         course: s.assignment.subject, // Or course code
-        submitted: s.submittedDate
+        submitted: s.submittedAt || s.submittedDate || s.createdAt
       }));
 
     const dashboardData = {

@@ -1,5 +1,6 @@
 import dbConnect from '@/dbConnect';
 import Assignment from '@/models/Assignment';
+import AssignedClass from '@/models/AssignedClass';
 import Submission from '@/models/Submission';
 import { studentAuthMiddleware, errorResponse, successResponse } from '@/middleware/student';
 
@@ -25,19 +26,44 @@ export async function GET(req) {
     };
 
     const assignments = await Assignment.find(query)
-      .populate('course', 'name code')
+      .populate({
+        path: 'course',
+        select: 'subject section classId',
+        populate: { path: 'classId', select: 'program className semester' }
+      })
       .populate('instructor', 'name')
-      .sort({ dueDate: 1 });
+      .sort({ deadline: 1 });
+
+    // Enrich each assignment with a stable `course.code` and `course.name`
+    // derived from the AssignedClass → Class chain
+    const enrichedAssignments = assignments.map(a => {
+      const assignedClass = a.course;
+      const classInfo = assignedClass?.classId;
+      const program = classInfo?.program || '';
+      const section = assignedClass?.section || '';
+      const subject = assignedClass?.subject || '';
+
+      return {
+        ...(a.toObject ? a.toObject() : a),
+        course: {
+          _id: assignedClass?._id || null,
+          code: program && section ? `${program} Sec ${section}` : 'N/A',
+          name: subject || classInfo?.className || 'N/A',
+          subject,
+          section,
+        },
+      };
+    });
 
     // Check submission status for each assignment
-    const assignmentsWithStatus = await Promise.all(assignments.map(async (assignment) => {
+    const assignmentsWithStatus = await Promise.all(enrichedAssignments.map(async (assignment) => {
       const submission = await Submission.findOne({
         assignment: assignment._id,
         student: studentId
       });
 
       return {
-        ...assignment.toObject(),
+        ...assignment,
         submissionStatus: submission ? submission.status : 'Not Submitted',
         marksObtained: submission ? submission.marks : null,
         feedback: submission ? submission.feedback : null

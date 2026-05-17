@@ -1,8 +1,11 @@
 import dbConnect from '@/dbConnect';
 import Student from '@/models/Student';
 import Course from '@/models/Course';
+import AssignedClass from '@/models/AssignedClass';
+import Class from '@/models/Class';
 import User from '@/models/User';
 import Submission from '@/models/Submission';
+import Assignment from '@/models/Assignment';
 import { instructorAuthMiddleware, errorResponse, successResponse } from '@/middleware/instructor';
 
 export async function GET(req) {
@@ -15,38 +18,74 @@ export async function GET(req) {
     const instructorId = authResult.user.id;
     await dbConnect();
 
-    // Fetch instructor's courses
+    // ── 1. Fetch instructor's own courses (Course model) ──────────────────────
     const courses = await Course.find({ instructor: instructorId }).select('_id code name').lean();
     const courseIds = courses.map(c => c._id);
 
-    // Find students enrolled in any of these courses
-    const students = await Student.find({ courses: { $in: courseIds } })
+    // ── 2. Fetch instructor's assigned classes (AssignedClass model) ───────────
+    const assignedClasses = await AssignedClass.find({ teacherId: instructorId })
+      .populate('classId', 'program className semester')
+      .lean();
+    const assignedClassIds = assignedClasses.map(ac => ac._id);
+
+    // ── 3. Find students enrolled in EITHER Course OR AssignedClass ────────────
+    const allEnrolledIds = [...courseIds, ...assignedClassIds];
+    const students = await Student.find({ courses: { $in: allEnrolledIds } })
       .populate('userId', 'name email')
-      .populate('courses', 'code name instructor')
       .lean();
 
-    // Map and format student data
-    const formattedStudents = await Promise.all(students.map(async (student) => {
-      // Find which of the student's courses belong to this instructor
-      const instructorCourses = student.courses.filter(
-        c => c.instructor.toString() === instructorId.toString()
-      );
-      
-      const courseStr = instructorCourses.map(c => `${c.code} - ${c.name}`).join(', ');
+    // ── 4. Map all assigned class docs for fast lookup ─────────────────────────
+    const assignedClassMap = new Map();
+    assignedClasses.forEach(ac => {
+      assignedClassMap.set(ac._id.toString(), {
+        _id: ac._id,
+        code: ac.classId ? `${ac.classId.program} Sec ${ac.section}` : `Sec ${ac.section}`,
+        name: ac.subject,
+        section: ac.section,
+      });
+    });
 
-      // Count submissions for this student in this instructor's courses
-      const instructorCourseIds = instructorCourses.map(c => c._id);
-      
-      // Need assignments for these courses
-      const Assignment = (await import('@/models/Assignment')).default;
-      const assignments = await Assignment.find({ course: { $in: instructorCourseIds } }).select('_id');
-      const assignmentIds = assignments.map(a => a._id);
+    // ── 5. Map and format student data ─────────────────────────────────────────
+    const formattedStudents = await Promise.all(students.map(async (student) => {
+      const populatedCourses = student.courses; // already populated from Student schema
+      const sCourses = Array.isArray(populatedCourses) ? populatedCourses : [];
+
+      const studentCourseIds = sCourses.map(c => {
+        const id = c._id;
+        return id ? id.toString() : String(c);
+      });
+
+      // Identify instructor-owned courses (Course model + instructor field)
+      const instructorCourseDocs = sCourses.filter(
+        c => c.instructor && c.instructor.toString() === instructorId.toString()
+      );
+
+      // Identify instructor-owned assigned classes (from our map)
+      const instructorAssignedClasses = assignedClasses.filter(
+        ac => studentCourseIds.includes(ac._id.toString())
+      );
+
+      const allInstructorCourses = [...instructorCourseDocs, ...instructorAssignedClasses];
+
+      const courseStr = allInstructorCourses.map(c => {
+        if (c.code) {
+          return `${c.code} - ${c.name}`;
+        }
+        return `${c.classId?.program || ''} Sec ${c.section} - ${c.subject}`;
+      }).join(', ');
+
+      // Count submissions for this student in instructor's assignments
+      const assignmentsForInstructor = await Assignment.find({
+        instructor: instructorId,
+        course: { $in: allInstructorCourses.map(c => c._id) }
+      }).select('_id');
+      const assignmentIds = assignmentsForInstructor.map(a => a._id);
 
       const submittedCount = await Submission.countDocuments({
-        student: student.userId._id, // student is userId in Submission
+        student: student.userId._id,
         assignment: { $in: assignmentIds }
       });
-      
+
       const totalCount = assignmentIds.length;
 
       return {
@@ -54,10 +93,10 @@ export async function GET(req) {
         userId: student.userId._id,
         name: student.userId.name || 'Unknown Student',
         email: student.userId.email || 'No email',
-        rollNo: student.userId._id.toString().substring(18, 24).toUpperCase(), // Fake roll no if none exists
+        rollNo: student.userId._id.toString().substring(18, 24).toUpperCase(),
         course: courseStr || 'N/A',
         attendance: student.attendance || 0,
-        grade: 'N/A', // Compute actual grade if possible, else N/A
+        grade: 'N/A',
         assignments: {
           submitted: submittedCount,
           total: totalCount
@@ -68,10 +107,21 @@ export async function GET(req) {
 
     const user = await User.findById(instructorId).select('name email').lean();
 
-    return successResponse({ 
-      students: formattedStudents, 
-      courses, 
-      user 
+    // Merge regular Course entries and AssignedClass entries into the same courses list
+    const coursesForDropdown = [
+      ...courses.map(c => ({ _id: c._id, code: c.code, name: c.name, isAssignedClass: false })),
+      ...assignedClasses.map(ac => ({
+        _id: ac._id,
+        code: ac.classId ? `${ac.classId.program} Sec ${ac.section}` : `Sec ${ac.section}`,
+        name: ac.subject,
+        isAssignedClass: true,
+      }))
+    ];
+
+    return successResponse({
+      students: formattedStudents,
+      courses: coursesForDropdown,
+      user
     }, 'Students retrieved successfully');
   } catch (error) {
     console.error('Instructor students error:', error);

@@ -1,7 +1,9 @@
 import dbConnect from '@/dbConnect';
 import Assignment from '@/models/Assignment';
+import AssignedClass from '@/models/AssignedClass';
 import Submission from '@/models/Submission';
 import Student from '@/models/Student';
+import Class from '@/models/Class';
 import { studentAuthMiddleware, errorResponse, successResponse } from '@/middleware/student';
 
 export async function GET(req) {
@@ -13,12 +15,44 @@ export async function GET(req) {
 
     await dbConnect();
     const submissions = await Submission.find({ student: authResult.user.id })
-      .populate('assignment', 'title totalPoints')
-      .populate('course', 'name code')
+      .populate({
+        path: 'assignment',
+        select: 'title totalMarks deadline subject',
+        populate: {
+          path: 'course',
+          select: 'subject section classId',
+          populate: { path: 'classId', select: 'program className semester' }
+        }
+      })
       .sort({ submittedAt: -1 })
       .lean();
 
-    return successResponse(submissions, 'Submissions retrieved successfully');
+    // Enrich each submission with a stable `course.code` and `course.name`
+    // derived from the AssignedClass → Class chain
+    const enriched = submissions.map(s => {
+      const assignment = s.assignment;
+      const assignedClass = assignment?.course;
+      const classInfo = assignedClass?.classId;
+      const subject = assignedClass?.subject || '';
+      const section = assignedClass?.section || '';
+      const program = classInfo?.program || '';
+      const semester = classInfo?.semester || '';
+      const className = classInfo?.className || '';
+
+      return {
+        ...s,
+        course: {
+          _id: assignedClass?._id || null,
+          code: program && section ? `${program} Sec ${section}` : 'N/A',
+          name: subject || className || 'N/A',
+          subject,
+          section,
+          classId: classInfo?._id || null,
+        },
+      };
+    });
+
+    return successResponse(enriched, 'Submissions retrieved successfully');
   } catch (error) {
     console.error('Submissions GET error:', error);
     return errorResponse('Failed to retrieve submissions', 'SERVER_ERROR', 500);
@@ -61,9 +95,9 @@ export async function POST(req) {
       student: authResult.user.id,
       course: assignment.course,
       fileUrl,
-      feedback: notes || '', // Using feedback field for student notes temporarily or adding a new field
+      feedback: notes || '',
       status: 'Submitted',
-      submittedAt: new Date()
+      submittedDate: new Date()
     });
 
     return successResponse(submission, 'Assignment submitted successfully');

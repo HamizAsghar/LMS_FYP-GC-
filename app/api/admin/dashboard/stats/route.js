@@ -1,10 +1,13 @@
 import dbConnect from '@/dbConnect';
 import User from '@/models/User';
 import Course from '@/models/Course';
+import AssignedClass from '@/models/AssignedClass';
 import Assignment from '@/models/Assignment';
 import Submission from '@/models/Submission';
 import ActivityLog from '@/models/ActivityLog';
+import Notification from '@/models/Notification';
 import InstructorActivity from '@/models/InstructorActivity';
+import Instructor from '@/models/Instructor';
 import {
   adminAuthMiddleware,
   errorResponse,
@@ -27,6 +30,8 @@ export async function GET(req) {
       activeUsers,
       totalCourses,
       activeCourses,
+      totalAssignedClasses,
+      activeAssignedClasses,
       totalAssignments,
       totalSubmissions,
       submittedSubmissions,
@@ -42,6 +47,8 @@ export async function GET(req) {
       User.countDocuments({ status: 'Active' }),
       Course.countDocuments(),
       Course.countDocuments({ status: 'Active' }),
+      AssignedClass.countDocuments(),
+      AssignedClass.countDocuments({ 'enrolledStudents.0': { $exists: true } }),
       Assignment.countDocuments(),
       Submission.countDocuments(),
       Submission.countDocuments({ status: 'Submitted' }),
@@ -68,6 +75,8 @@ export async function GET(req) {
       inactiveUsers: totalUsers - activeUsers,
       totalCourses,
       activeCourses,
+      totalAssignedClasses,
+      activeAssignedClasses,
       totalAssignments,
       totalActivities,
       pendingTasks,

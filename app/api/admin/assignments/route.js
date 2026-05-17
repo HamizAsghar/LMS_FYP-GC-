@@ -1,5 +1,6 @@
 import dbConnect from '@/dbConnect';
 import Assignment from '@/models/Assignment';
+import AssignedClass from '@/models/AssignedClass';
 import Course from '@/models/Course';
 import User from '@/models/User';
 import {
@@ -37,7 +38,11 @@ export async function GET(req) {
 
     const total = await Assignment.countDocuments(filter);
     const assignments = await Assignment.find(filter)
-      .populate('course', 'name code')
+      .populate({
+        path: 'course',
+        select: 'subject section classId',
+        populate: { path: 'classId', select: 'program className semester' }
+      })
       .populate('instructor', 'name email')
       .sort({ [sortBy]: sortOrder })
       .limit(limit)
@@ -45,11 +50,26 @@ export async function GET(req) {
       .lean();
 
     const now = new Date();
-    const enriched = assignments.map((a) => ({
-      ...a,
-      deadlineStatus:
-        new Date(a.deadline) < now ? 'Overdue' : new Date(a.deadline) - now < 86400000 * 3 ? 'Due Soon' : 'On Track',
-    }));
+    const enriched = assignments.map((a) => {
+      const assignedClass = a.course;
+      const classInfo = assignedClass?.classId;
+      return {
+        ...a,
+        course: {
+          _id: assignedClass?._id || null,
+          code: classInfo ? `${classInfo.program} Sec ${assignedClass.section}` : 'N/A',
+          name: assignedClass?.subject || classInfo?.className || 'N/A',
+          subject: assignedClass?.subject || '',
+          section: assignedClass?.section || '',
+        },
+        deadlineStatus:
+          new Date(a.deadline) < now
+            ? 'Overdue'
+            : new Date(a.deadline) - now < 86400000 * 3
+            ? 'Due Soon'
+            : 'On Track',
+      };
+    });
 
     return successResponse(
       { assignments: enriched, pagination: calculatePagination(total, page, limit) },
@@ -74,8 +94,8 @@ export async function POST(req) {
       return errorResponse('Missing required assignment fields', 'VALIDATION_ERROR', 400);
     }
 
-    if (!(await Course.findById(body.course))) {
-      return errorResponse('Course not found', 'NOT_FOUND', 404);
+    if (!(await AssignedClass.findById(body.course))) {
+      return errorResponse('Assigned class not found', 'NOT_FOUND', 404);
     }
 
     const instructor = await User.findById(body.instructor);
