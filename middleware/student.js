@@ -12,7 +12,7 @@ export async function studentAuthMiddleware(req) {
       return {
         success: false,
         error: 'UNAUTHORIZED',
-        message: 'No authentication token provided',
+        message: ' authentication token provided',
         status: 401
       };
     }
