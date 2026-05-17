@@ -23,13 +23,27 @@ export async function GET(req) {
     const [user, assignments] = await Promise.all([
       User.findById(instructorId).select('name email').lean(),
       Assignment.find(query)
-        .populate('course', 'name code')
+        .populate({
+          path: 'course',
+          select: 'name code subject section classId',
+          populate: { path: 'classId', select: 'program className' }
+        })
         .sort({ createdAt: -1 })
     ]);
 
+    const mappedAssignments = assignments.map(a => {
+      const assignmentObj = typeof a.toObject === 'function' ? a.toObject() : a;
+      if (assignmentObj.course && assignmentObj.course.subject && !assignmentObj.course.code) {
+        // It's an AssignedClass
+        assignmentObj.course.code = `${assignmentObj.course.classId?.program || ''} Sec ${assignmentObj.course.section || ''}`;
+        assignmentObj.course.name = assignmentObj.course.subject;
+      }
+      return assignmentObj;
+    });
+
     return successResponse({
       user,
-      assignments
+      assignments: mappedAssignments
     }, 'Instructor assignments retrieved successfully');
   } catch (error) {
     console.error('Instructor assignments error:', error);

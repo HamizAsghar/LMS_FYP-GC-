@@ -162,25 +162,6 @@ export default function LoginPage() {
                     'Sign In'
                   )}
                 </Button>
-
-                {/* Demo Credentials Helper */}
-                <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10 text-xs space-y-1">
-                  <p className="font-semibold text-primary/80 uppercase tracking-wider text-[10px]">Demo Credentials</p>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Email:</span>
-                    <span className="font-medium text-foreground">
-                      {formData.role === 'admin' ? 'admin@eduhub.edu' : 
-                       formData.role === 'instructor' ? 'instructor@eduhub.edu' : 'student@eduhub.edu'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Password:</span>
-                    <span className="font-medium text-foreground">
-                      {formData.role === 'admin' ? 'admin123' : 
-                       formData.role === 'instructor' ? 'instructor123' : 'student123'}
-                    </span>
-                  </div>
-                </div>
               </form>
             </CardContent>
             <CardFooter>

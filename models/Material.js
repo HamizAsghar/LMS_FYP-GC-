@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 // Schema for learning materials uploaded by instructors
 const materialSchema = new Schema({
   title: { type: String, required: true, trim: true },
-  course: { type: Schema.Types.ObjectId, ref: 'Course', required: true }, // reference to Course model
+  course: { type: Schema.Types.ObjectId, ref: 'AssignedClass', required: true }, // reference to AssignedClass model
   type: { type: String, enum: ['PDF', 'Video', 'Presentation', 'Other'], required: true },
   size: { type: String }, // human readable size (e.g., "2.5 MB")
   uploadedAt: { type: Date, default: Date.now },

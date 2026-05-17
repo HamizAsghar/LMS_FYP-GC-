@@ -3,10 +3,9 @@ import Course from '@/models/Course';
 import Assignment from '@/models/Assignment';
 import Submission from '@/models/Submission';
 import Notification from '@/models/Notification';
-import LearningMaterial from '@/models/LearningMaterial';
+import AssignedClass from '@/models/AssignedClass';
 import Student from '@/models/Student';
 import StudentActivity from '@/models/StudentActivity';
-import Schedule from '@/models/Schedule';
 import User from '@/models/User';
 import { studentAuthMiddleware, errorResponse, successResponse } from '@/middleware/student';
 
@@ -38,7 +37,9 @@ export async function GET(req) {
       notifications,
       downloadCount,
     ] = await Promise.all([
-      Course.countDocuments({ ...courseFilter, status: 'Active' }),
+      courseIds.length
+        ? Course.countDocuments({ _id: { $in: courseIds }, status: 'Active' })
+        : Promise.resolve(0),
       Assignment.find(assignmentFilter).sort({ deadline: 1 }).limit(10).lean(),
       Submission.find({ student: studentId }).lean(),
       Notification.find({ user: studentId }).sort({ timestamp: -1 }).limit(5).lean(),
@@ -60,80 +61,53 @@ export async function GET(req) {
       attendance: profile?.attendance || 0,
     };
 
-    const enrolledCourses = await Course.find(courseFilter)
-      .populate('instructor', 'name')
-      .limit(4)
-      .lean();
-
-    const upcomingDeadlines = assignments.slice(0, 4).map((a) => ({
-      id: a._id,
-      title: a.title,
-      course: a.subject,
-      deadline: a.deadline,
-      urgent: new Date(a.deadline) - new Date() < 86400000,
-    }));
-
-    const recentMaterials = courseIds.length
-      ? await LearningMaterial.find({ course: { $in: courseIds } })
-          .sort({ uploadedDate: -1 })
+    const enrolledCoursesFromDb = courseIds.length
+      ? await Course.find({ _id: { $in: courseIds } })
+          .populate('instructor', 'name')
           .limit(4)
-          .populate('course', 'code')
           .lean()
       : [];
 
-    const progressData = [];
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - i * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      const weekSubs = submissions.filter(
-        (s) => new Date(s.submittedDate) >= weekStart && new Date(s.submittedDate) < weekEnd
-      );
-      progressData.push({
-        name: `Week ${4 - i}`,
-        progress: Math.min(100, weekSubs.length * 25),
-      });
-    }
+    const assignedClasses = await AssignedClass.find({ enrolledStudents: studentId })
+      .populate('classId')
+      .populate('teacherId', 'name')
+      .limit(4)
+      .lean();
 
-    const allEnrolledCourses = await Course.find(courseFilter).lean();
-    const totalEnrolled = allEnrolledCourses.length;
-    const completedCount = allEnrolledCourses.filter(c => c.status === 'Completed').length;
-    const activeCount = allEnrolledCourses.filter(c => c.status === 'Active').length;
-    const archivedCount = allEnrolledCourses.filter(c => c.status === 'Archived').length;
+    const mappedAssignedClasses = assignedClasses.map(ac => ({
+      _id: ac._id,
+      id: ac._id,
+      code: ac.classId ? `${ac.classId.program} Sec ${ac.section}` : `Sec ${ac.section}`,
+      name: ac.subject,
+      instructor: ac.teacherId?.name || 'Unknown',
+      progress: 0,
+      nextClass: 'No upcoming class',
+      isAssignedClass: true,
+    }));
 
-    const courseCompletionData = [
-      { name: 'Completed', value: totalEnrolled ? Math.round((completedCount / totalEnrolled) * 100) : 0, color: '#22c55e' },
-      { name: 'In Progress', value: totalEnrolled ? Math.round((activeCount / totalEnrolled) * 100) : 0, color: '#3b82f6' },
-      { name: 'Archived', value: totalEnrolled ? Math.round((archivedCount / totalEnrolled) * 100) : 0, color: '#94a3b8' },
-    ];
+    const mappedCourses = enrolledCoursesFromDb.map((c) => ({
+      _id: c._id,
+      id: c._id,
+      code: c.code,
+      name: c.name,
+      instructor: c.instructor?.name || 'Unknown',
+      progress: stats.overallProgress,
+      nextClass: 'No upcoming class',
+    }));
 
-    const schedules = await Schedule.find({
-      course: { $in: courseIds },
-      startTime: { $gt: new Date() }
-    }).sort({ startTime: 1 }).lean();
+    const combinedEnrolledCourses = [...mappedAssignedClasses, ...mappedCourses].slice(0, 4);
+
+    const totalCoursesWithAssigned = stats.totalCourses + assignedClasses.length;
 
     return successResponse(
       {
         user,
-        stats,
-        progressData,
-        courseCompletionData,
-        enrolledCourses: enrolledCourses.map((c) => {
-          const nextClass = schedules.find(s => s.course.toString() === c._id.toString());
-          return {
-            id: c._id,
-            code: c.code,
-            name: c.name,
-            instructor: c.instructor?.name || 'Unknown',
-            progress: stats.overallProgress,
-            nextClass: nextClass ? new Date(nextClass.startTime).toLocaleString() : 'No upcoming class',
-          };
-        }),
-        upcomingDeadlines,
+        stats: {
+          ...stats,
+          totalCourses: totalCoursesWithAssigned,
+        },
+        enrolledCourses: combinedEnrolledCourses,
         recentNotifications: notifications,
-        recentMaterials,
-        recentAssignments: assignments.slice(0, 5),
       },
       'Student dashboard data retrieved successfully'
     );

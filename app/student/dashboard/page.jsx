@@ -21,6 +21,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import { apiFetch } from '@/lib/api-client'
+import { useState } from 'react'
 import { useApi } from '@/hooks/use-api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
@@ -40,6 +44,37 @@ export default function StudentDashboardPage() {
 
   const user = dash?.user || {}
   const userName = user.name || "Student"
+
+  const [enrollUsername, setEnrollUsername] = useState('')
+  const [enrollPassword, setEnrollPassword] = useState('')
+  const [isEnrolling, setIsEnrolling] = useState(false)
+
+  const handleEnroll = async () => {
+    if (!enrollUsername || !enrollPassword) {
+      toast.error("Please enter both username and password")
+      return
+    }
+    try {
+      setIsEnrolling(true)
+      const res = await apiFetch('/api/student/enroll', {
+        method: 'POST',
+        body: JSON.stringify({ username: enrollUsername, password: enrollPassword })
+      })
+      if (res.success) {
+        toast.success("Successfully enrolled in class!")
+        setEnrollUsername('')
+        setEnrollPassword('')
+        // ideally refetch dashboard data here
+        window.location.reload()
+      } else {
+        toast.error(res.message || "Failed to enroll")
+      }
+    } catch (err) {
+      toast.error("An error occurred during enrollment")
+    } finally {
+      setIsEnrolling(false)
+    }
+  }
 
   const stats = [
     { title: "Total Courses", value: s.totalCourses ?? 0, icon: BookOpen, description: "active courses" },
@@ -267,6 +302,33 @@ export default function StudentDashboardPage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Enroll in Class */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                Enroll in a Class
+              </CardTitle>
+              <CardDescription>Enter class credentials to join</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input 
+                placeholder="Username (e.g. class_bscs_6_web_a)" 
+                value={enrollUsername} 
+                onChange={(e) => setEnrollUsername(e.target.value)} 
+              />
+              <Input 
+                type="password" 
+                placeholder="Password" 
+                value={enrollPassword} 
+                onChange={(e) => setEnrollPassword(e.target.value)} 
+              />
+              <Button className="w-full mt-2" onClick={handleEnroll} disabled={isEnrolling}>
+                {isEnrolling ? 'Enrolling...' : 'Enroll Now'}
+              </Button>
             </CardContent>
           </Card>
 

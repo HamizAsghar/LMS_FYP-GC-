@@ -17,7 +17,11 @@ export async function GET(req) {
       // Assuming a User model exists
       (await import('@/models/User')).default.findById(instructorId).select('name email').lean(),
       Material.find({ instructor: instructorId })
-        .populate('course', 'name code')
+        .populate({
+          path: 'course',
+          select: 'name code subject section classId',
+          populate: { path: 'classId', select: 'program className' }
+        })
         .sort({ createdAt: -1 })
         .lean()
     ]);
@@ -26,7 +30,9 @@ export async function GET(req) {
     const formatted = materials.map(m => ({
       _id: m._id,
       title: m.title,
-      course: `${m.course?.code || ''} - ${m.course?.name || ''}`,
+      course: m.course?.subject 
+        ? `${m.course.classId?.program || ''} Sec ${m.course.section || ''} - ${m.course.subject}`
+        : `${m.course?.code || ''} - ${m.course?.name || ''}`,
       courseId: m.course?._id,
       type: m.type,
       size: m.size,

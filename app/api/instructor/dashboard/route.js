@@ -76,16 +76,31 @@ export async function GET(req) {
 
     // 5. My Courses Overview
     const courses = await Course.find({ instructor: instructorId }).limit(4);
-    const myCourses = await Promise.all(courses.map(async (course) => {
+    const AssignedClass = await import('@/models/AssignedClass').then(m => m.default || m);
+    const assignedClasses = await AssignedClass.find({ teacherId: instructorId }).populate('classId').limit(4);
+
+    const mappedCourses = await Promise.all(courses.map(async (course) => {
       const assignmentCount = await Assignment.countDocuments({ course: course._id });
       return {
+        _id: course._id,
         id: course._id,
         name: `${course.code} - ${course.name}`,
         students: course.students,
         assignments: assignmentCount,
-        progress: 0 // Progress calculation logic would go here
+        progress: 0
       };
     }));
+
+    const mappedAssigned = assignedClasses.map(ac => ({
+      _id: ac._id,
+      id: ac._id,
+      name: ac.classId ? `${ac.classId.program} Sec ${ac.section} - ${ac.subject}` : ac.subject,
+      students: 0,
+      assignments: 0,
+      progress: 0
+    }));
+
+    const myCourses = [...mappedAssigned, ...mappedCourses].slice(0, 4);
 
     // 6. Recent Activities
     const recentActivities = await InstructorActivity.find({ instructor: instructorId })

@@ -179,11 +179,13 @@ export default function UploadAssignmentPage() {
                           <SelectValue placeholder="Select a course" />
                         </SelectTrigger>
                         <SelectContent>
-                          {courses.map((course) => (
-                            <SelectItem key={course._id} value={course._id}>
+                          {courses.map((course) => {
+                            const id = (course._id || course.id || "").toString();
+                            return (
+                            <SelectItem key={id} value={id}>
                               {course.code} - {course.name}
                             </SelectItem>
-                          ))}
+                          )})}
                         </SelectContent>
                       </Select>
                     </div>

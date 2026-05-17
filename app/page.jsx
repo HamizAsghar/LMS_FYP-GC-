@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  GraduationCap, 
-  Users, 
-  BookOpen, 
-  BarChart3, 
-  Shield, 
-  Clock, 
-  Bell, 
+import {
+  GraduationCap,
+  Users,
+  BookOpen,
+  BarChart3,
+  Shield,
+  Clock,
+  Bell,
   FileText,
   CheckCircle,
   ArrowRight,
@@ -125,7 +125,7 @@ export default function LandingPage() {
               Complete Learning Management System
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 text-pretty">
-              A comprehensive platform for managing instructor activities, student assignments, 
+              A comprehensive platform for managing instructor activities, student assignments,
               learning materials, and academic performance tracking.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -229,9 +229,9 @@ export default function LandingPage() {
                 About Our Platform
               </h2>
               <p className="text-lg text-muted-foreground mb-6">
-                EduLMS is a comprehensive Learning Management System designed to streamline 
-                educational processes. Our platform helps institutions track instructor 
-                daily activities, manage student assignments, organize learning materials, 
+                EduLMS is a comprehensive Learning Management System designed to streamline
+                educational processes. Our platform helps institutions track instructor
+                daily activities, manage student assignments, organize learning materials,
                 and generate insightful reports.
               </p>
               <ul className="space-y-4">
@@ -299,7 +299,7 @@ export default function LandingPage() {
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
             </div>
             <p className="text-muted-foreground text-sm">
-              2024 EduLMS. All rights reserved.
+              2026 EduLMS. All rights reserved.
             </p>
           </div>
         </div>

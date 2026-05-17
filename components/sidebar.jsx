@@ -20,6 +20,8 @@ const adminNavItems = [
   { href: '/admin/users', label: 'Manage Users', icon: UserCog },
   { href: '/admin/instructors', label: 'Manage Instructors', icon: GraduationCap },
   { href: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
+  { href: '/admin/make-class', label: 'Make Class', icon: PlusCircle },
+  { href: '/admin/assign-classes', label: 'Assign Classes', icon: Send },
   { href: '/admin/instructor-activities', label: 'Instructor Activities', icon: Activity },
   { href: '/admin/student-activities', label: 'Student Activities', icon: Users },
   { href: '/admin/assignments', label: 'Assignments', icon: FileText },

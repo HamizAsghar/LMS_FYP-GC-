@@ -16,7 +16,7 @@ export async function GET(req) {
     const filter =
       profile?.courses?.length > 0
         ? { _id: { $in: profile.courses }, status: 'Active' }
-        : { status: 'Active' };
+        : { _id: { $in: [] }, status: 'Active' };
 
     const courses = await Course.find(filter)
       .populate('instructor', 'name email department')
