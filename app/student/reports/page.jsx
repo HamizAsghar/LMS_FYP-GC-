@@ -47,6 +47,51 @@ export default function StudentReportsPage() {
   const performanceTrend = reportsData?.performanceTrend || []
   const stats = reportsData?.stats || { avgGrade: 0, totalSubmissions: 0, onTimeSubmissions: 0, activeCourses: 0 }
 
+  const handleExport = () => {
+    if (!reportsData) return
+
+    let csvContent = ""
+
+    // 1. Title & Metadata
+    csvContent += "STUDENT ACADEMIC REPORT & ANALYTICS\n"
+    csvContent += `Student Name: ${authUser?.name || 'Student'}\n`
+    csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`
+
+    // 2. Overview Stats Section
+    csvContent += "OVERVIEW STATISTICS\n"
+    csvContent += "Metric,Value\n"
+    csvContent += `Average Grade,${stats.avgGrade}%\n`
+    csvContent += `Total Submissions,${stats.totalSubmissions}\n`
+    csvContent += `On-Time Rate,${stats.totalSubmissions > 0 ? Math.round((stats.onTimeSubmissions / stats.totalSubmissions) * 100) : 0}%\n`
+    csvContent += `Active Courses,${stats.activeCourses}\n\n`
+
+    // 3. Course Progress Section
+    csvContent += "COURSE PROGRESS & COMPLETION\n"
+    csvContent += "Course Code,Course Name,Progress (%),Grade,Assignments,Completed\n"
+    courseProgress.forEach(course => {
+      csvContent += `"${course.course}","${course.name}",${course.progress}%,${course.grade},${course.assignments},${course.completed}\n`
+    });
+    csvContent += "\n"
+
+    // 4. Submission History Section
+    csvContent += "SUBMISSION & GRADING HISTORY\n"
+    csvContent += "Assignment,Course Code,Submission Date,Score/Grade,Status\n"
+    submissionHistory.forEach(s => {
+      csvContent += `"${s.title}","${s.course}","${s.submitted}","${s.grade}","${s.status.toUpperCase()}"\n`
+    });
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `${authUser?.name || 'Student'}_Academic_Report_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <Navbar 
@@ -87,7 +132,7 @@ export default function StudentReportsPage() {
                   <Printer className="w-4 h-4 mr-2" />
                   Print
                 </Button>
-                <Button>
+                <Button onClick={handleExport}>
                   <Download className="w-4 h-4 mr-2" />
                   Export
                 </Button>
@@ -262,7 +307,7 @@ export default function StudentReportsPage() {
 
         {/* Quick Reports */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="cursor-pointer hover:border-primary transition-colors">
+          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={handleExport}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">

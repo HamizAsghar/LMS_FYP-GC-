@@ -2,6 +2,9 @@ import dbConnect from '@/dbConnect';
 import Course from '@/models/Course';
 import Assignment from '@/models/Assignment';
 import User from '@/models/User';
+import AssignedClass from '@/models/AssignedClass';
+import Class from '@/models/Class';
+import Student from '@/models/Student';
 import { instructorAuthMiddleware, errorResponse, successResponse } from '@/middleware/instructor';
 
 export async function GET(req) {
@@ -17,32 +20,35 @@ export async function GET(req) {
     const [user, courses, assignedClasses] = await Promise.all([
       User.findById(instructorId).select('name email').lean(),
       Course.find({ instructor: instructorId }).sort({ createdAt: -1 }),
-      import('@/models/AssignedClass').then(m => m.default || m).then(AssignedClass => 
-        AssignedClass.find({ teacherId: instructorId })
-          .populate('classId', 'program className semester')
-          .lean()
-      )
+      AssignedClass.find({ teacherId: instructorId })
+        .populate('classId', 'program className semester')
+        .lean()
     ]);
     
     const coursesWithDetails = await Promise.all(courses.map(async (course) => {
       const assignmentCount = await Assignment.countDocuments({ course: course._id });
+      const enrolledCount = await Student.countDocuments({ courses: course._id });
       return {
         ...course.toObject(),
+        students: enrolledCount,
         assignmentCount
       };
     }));
 
-    const mappedAssignedClasses = assignedClasses.map(ac => ({
-      _id: ac._id,
-      name: ac.subject,
-      code: ac.classId ? `${ac.classId.program} Sec ${ac.section}` : `Sec ${ac.section}`,
-      semester: ac.classId ? ac.classId.semester : '',
-      description: `Assigned Class: ${ac.classId?.className || ''}`,
-      progress: 0,
-      students: 0,
-      assignmentCount: 0,
-      status: 'Active',
-      isAssignedClass: true
+    const mappedAssignedClasses = await Promise.all(assignedClasses.map(async (ac) => {
+      const assignmentCount = await Assignment.countDocuments({ course: ac._id });
+      return {
+        _id: ac._id,
+        name: ac.subject,
+        code: ac.classId ? `${ac.classId.program} Sec ${ac.section}` : `Sec ${ac.section}`,
+        semester: ac.classId ? ac.classId.semester : '',
+        description: `Assigned Class: ${ac.classId?.className || ''}`,
+        progress: 0,
+        students: ac.enrolledStudents?.length || 0,
+        assignmentCount,
+        status: 'Active',
+        isAssignedClass: true
+      };
     }));
 
     return successResponse({

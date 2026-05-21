@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   Upload, 
   FileText, 
@@ -92,6 +92,16 @@ export default function SubmitAssignmentPage() {
   const [dragActive, setDragActive] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const assignmentId = params.get('assignmentId');
+      if (assignmentId) {
+        setSelectedAssignment(assignmentId);
+      }
+    }
+  }, []);
 
   const currentAssignment = pendingAssignments.find(a => a.id.toString() === selectedAssignment)
 

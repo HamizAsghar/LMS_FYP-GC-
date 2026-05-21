@@ -72,6 +72,61 @@ export default function AdminDashboard() {
     color: submissionColors[name.toLowerCase()] || '#94a3b8'
   }))
 
+  const handleExport = () => {
+    if (!dash) return
+
+    let csvContent = ""
+
+    // 1. Title & Metadata
+    csvContent += "ADMIN SYSTEM MONITORING & PERFORMANCE REPORT\n"
+    csvContent += `Generated on: ${new Date().toLocaleString()}\n`
+    csvContent += `System Status: ACTIVE & SECURED\n\n`
+
+    // 2. High-level Overview Cards Statistics
+    csvContent += "SYSTEM STATISTICS OVERVIEW\n"
+    csvContent += "Metric,Value\n"
+    csvContent += `Total Registered Users,${adminStats.totalUsers ?? 0}\n`
+    csvContent += `Total Instructors,${adminStats.totalInstructors ?? 0}\n`
+    csvContent += `Total Students,${adminStats.totalStudents ?? 0}\n`
+    csvContent += `Total Courses,${adminStats.totalCourses ?? 0}\n`
+    csvContent += `Total Daily Activities,${adminStats.totalActivities ?? 0}\n`
+    csvContent += `Pending Tasks,${adminStats.pendingTasks ?? 0}\n\n`
+
+    // 3. Assignment Submission Breakdown
+    csvContent += "ASSIGNMENT SUBMISSION DISTRIBUTION\n"
+    csvContent += "Status,Count\n"
+    submissionStatsDataFormatted.forEach(stat => {
+      csvContent += `"${stat.name}",${stat.value}\n`
+    });
+    csvContent += "\n"
+
+    // 4. Top Performing Instructors Tally
+    csvContent += "TOP PERFORMING INSTRUCTORS LEADERBOARD\n"
+    csvContent += "Instructor Name,Department,Rating,Active Courses,Activities Conducted,Completion Rate (%)\n"
+    topInstructors.forEach(inst => {
+      csvContent += `"${inst.name || 'Instructor'}","${inst.department || 'N/A'}",${inst.rating || 0},${inst.courses || 0},${inst.activities || 0},${inst.completionRate || 0}%\n`
+    });
+    csvContent += "\n"
+
+    // 5. Recent System Activity Logs
+    csvContent += "RECENT SYSTEM ACTIVITY LOGS\n"
+    csvContent += "Log User,Action,Target,Timestamp\n"
+    recentActivityLogs.forEach(log => {
+      csvContent += `"${log.user}","${log.action}","${log.target}","${new Date(log.timestamp).toLocaleString()}"\n`
+    });
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `LMS_Admin_System_Report_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <Navbar 
@@ -96,7 +151,7 @@ export default function AdminDashboard() {
           <Button variant="outline" className="gap-2 bg-card">
             <Plus className="h-4 w-4" /> Create Activity
           </Button>
-          <Button variant="outline" className="gap-2 bg-card">
+          <Button variant="outline" className="gap-2 bg-card" onClick={handleExport}>
             <Download className="h-4 w-4" /> Export Report
           </Button>
         </div>

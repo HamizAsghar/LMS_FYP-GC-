@@ -39,6 +39,8 @@ export async function GET(req) {
       description: m.description,
       uploadedAt: m.uploadedAt.toISOString().split('T')[0],
       stats: m.stats,
+      downloads: m.type === 'Video' ? 0 : m.stats,
+      views: m.type === 'Video' ? m.stats : 0,
       fileUrl: m.fileUrl,
     }));
 
@@ -87,6 +89,26 @@ export async function POST(req) {
       description,
       instructor: instructorId,
     });
+
+    // Notify all enrolled students
+    try {
+      const Student = (await import('@/models/Student')).default;
+      const Notification = (await import('@/models/Notification')).default;
+      
+      const enrolledStudents = await Student.find({ courses: courseId });
+      
+      if (enrolledStudents.length > 0) {
+        const notifications = enrolledStudents.map(student => ({
+          user: student.userId,
+          title: 'New Learning Material',
+          message: `A new learning material "${title}" has been uploaded.`,
+          type: 'system',
+        }));
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifyError) {
+      console.error('Failed to create material notifications:', notifyError);
+    }
 
     return successResponse({ materialId: newMaterial._id }, 'Material uploaded', 201);
   } catch (error) {

@@ -29,7 +29,7 @@ export async function GET(req) {
         .populate('classId', 'program className semester')
         .lean(),
       Submission.find({ student: studentId })
-        .populate('assignment', 'title totalMarks deadline')
+        .populate('assignment', 'title totalMarks deadline course')
         .sort({ submittedAt: -1 })
         .lean(),
     ]);
@@ -39,11 +39,11 @@ export async function GET(req) {
     const assignmentsForStudent = await Assignment.find({
       course: { $in: [...courses.map(c => c._id), ...assignedClasses.map(ac => ac._id)] }
     }).select('_id course').lean();
-    const assignmentIds = assignmentsForStudent.map(a => a._id);
+    const assignmentIdStrings = assignmentsForStudent.map(a => a._id.toString());
 
     // Filter submissions to only those for this student's enrolled context
     const enrolledSubmissions = allSubmissions.filter(
-      s => assignmentIds.includes(s.assignment?._id)
+      s => s.assignment && assignmentIdStrings.includes(s.assignment._id.toString())
     );
 
     // Map regular Course entries for grades display
@@ -100,10 +100,11 @@ function buildGradeEntry(course, submissions, type) {
     status: s.status
   }));
 
-  const totalScore = submissions.reduce((sum, s) => sum + (s.marks || 0), 0);
-  const totalPossible = submissions.reduce((sum, s) => sum + (s.assignment?.totalMarks || 100), 0);
+  const gradedSubs = submissions.filter(s => s.status === 'Graded');
+  const totalScore = gradedSubs.reduce((sum, s) => sum + (s.marks || 0), 0);
+  const totalPossible = gradedSubs.reduce((sum, s) => sum + (s.assignment?.totalMarks || 100), 0);
   const percentage = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
-  const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : submissions.length > 0 ? 'F' : 'N/A';
+  const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : gradedSubs.length > 0 ? 'F' : 'N/A';
 
   return {
     id: course._id,
@@ -133,10 +134,11 @@ function buildAssignedGradeEntry(ac, submissions) {
     status: s.status
   }));
 
-  const totalScore = submissions.reduce((sum, s) => sum + (s.marks || 0), 0);
-  const totalPossible = submissions.reduce((sum, s) => sum + (s.assignment?.totalMarks || 100), 0);
+  const gradedSubs = submissions.filter(s => s.status === 'Graded');
+  const totalScore = gradedSubs.reduce((sum, s) => sum + (s.marks || 0), 0);
+  const totalPossible = gradedSubs.reduce((sum, s) => sum + (s.assignment?.totalMarks || 100), 0);
   const percentage = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
-  const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : submissions.length > 0 ? 'F' : 'N/A';
+  const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : gradedSubs.length > 0 ? 'F' : 'N/A';
 
   return {
     id: ac._id,

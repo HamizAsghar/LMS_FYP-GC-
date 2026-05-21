@@ -6,6 +6,9 @@ import InstructorActivity from '@/models/InstructorActivity';
 import Schedule from '@/models/Schedule';
 import Instructor from '@/models/Instructor';
 import User from '@/models/User';
+import AssignedClass from '@/models/AssignedClass';
+import Class from '@/models/Class';
+import Student from '@/models/Student';
 import { instructorAuthMiddleware, errorResponse, successResponse } from '@/middleware/instructor';
 
 export async function GET(req) {
@@ -17,9 +20,10 @@ export async function GET(req) {
     }
 
     const instructorId = authResult.user.id;
-    const user = await User.findById(instructorId).select('name email').lean();
 
     await dbConnect();
+
+    const user = await User.findById(instructorId).select('name email').lean();
 
     // 2. Get Stats for Grid
     // We'll aggregate data specifically for this instructor
@@ -28,31 +32,29 @@ export async function GET(req) {
       completedTasks,
       pendingTasks,
       uploadedAssignments,
-      totalStudentsFromCourses,
-      totalStudentsFromAssigned,
+      coursesList,
+      assignedClassesList,
       instructorProfile
     ] = await Promise.all([
       InstructorActivity.countDocuments({ instructor: instructorId }),
       InstructorActivity.countDocuments({ instructor: instructorId, status: 'Completed' }),
       InstructorActivity.countDocuments({ instructor: instructorId, status: 'Pending' }),
       Assignment.countDocuments({ instructor: instructorId }),
-      Course.aggregate([
-        { $match: { instructor: instructorId } },
-        { $group: { _id: null, total: { $sum: "$students" } } }
-      ]),
-      AssignedClass.aggregate([
-        { $match: { teacherId: instructorId } },
-        { $group: { _id: null, total: { $sum: { $size: "$enrolledStudents" } } } }
-      ]),
+      Course.find({ instructor: instructorId }).select('_id').lean(),
+      AssignedClass.find({ teacherId: instructorId }).select('enrolledStudents').lean(),
       Instructor.findOne({ userId: instructorId })
     ]);
+
+    const courseIds = coursesList.map(c => c._id);
+    const totalStudentsFromCourses = await Student.countDocuments({ courses: { $in: courseIds } });
+    const totalStudentsFromAssigned = assignedClassesList.reduce((sum, ac) => sum + (ac.enrolledStudents?.length || 0), 0);
 
     const stats = {
       totalActivities,
       completedTasks,
       pendingTasks,
       uploadedAssignments,
-      totalStudents: (totalStudentsFromCourses[0]?.total || 0) + (totalStudentsFromAssigned[0]?.total || 0),
+      totalStudents: totalStudentsFromCourses + totalStudentsFromAssigned,
       avgRating: instructorProfile?.rating || 0
     };
 
@@ -81,16 +83,16 @@ export async function GET(req) {
 
     // 5. My Courses Overview
     const courses = await Course.find({ instructor: instructorId }).limit(4);
-    const AssignedClass = await import('@/models/AssignedClass').then(m => m.default || m);
     const assignedClasses = await AssignedClass.find({ teacherId: instructorId }).populate('classId').limit(4);
 
     const mappedCourses = await Promise.all(courses.map(async (course) => {
       const assignmentCount = await Assignment.countDocuments({ course: course._id });
+      const enrolledCount = await Student.countDocuments({ courses: course._id });
       return {
         _id: course._id,
         id: course._id,
         name: `${course.code} - ${course.name}`,
-        students: course.students,
+        students: enrolledCount,
         assignments: assignmentCount,
         progress: 0
       };

@@ -26,6 +26,48 @@ export default function StudentGradesPage() {
   const { data: gradesRaw, loading } = useApi('/api/student/grades')
   const [expandedCourse, setExpandedCourse] = useState(null)
 
+  const handleExport = () => {
+    if (!gradesData || gradesData.length === 0) return
+
+    let csvContent = ""
+
+    // 1. Title & Metadata
+    csvContent += "STUDENT ACADEMIC PROGRESS REPORT\n"
+    csvContent += `Student Name: ${authUser?.name || 'Student'}\n`
+    csvContent += `Overall GPA: ${stats.overallGPA}\n`
+    csvContent += `Average Score: ${stats.averagePercentage}%\n`
+    csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`
+
+    // 2. Course Grades Table
+    csvContent += "COURSE GRADES BREAKDOWN\n"
+    csvContent += "Course,Instructor,Overall Grade,Percentage (%)\n"
+    gradesData.forEach(course => {
+      csvContent += `"${course.course}","${course.instructor}","${course.overallGrade}",${course.percentage}%\n`
+    });
+    csvContent += "\n"
+
+    // 3. Detailed Assignment Grades Section
+    csvContent += "DETAILED ASSIGNMENT GRADES\n"
+    csvContent += "Course,Assignment Name,Score,Total Possible,Percentage (%),Submission Date,Status\n"
+    gradesData.forEach(course => {
+      course.assignments.forEach(assign => {
+        const percent = assign.total > 0 ? ((assign.score / assign.total) * 100).toFixed(0) : 0;
+        csvContent += `"${course.course}","${assign.name}",${assign.score},${assign.total},${percent}%,${assign.date},"${assign.status || 'Graded'}"\n`
+      });
+    });
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `${authUser?.name || 'Student'}_Academic_Report_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const gradesData = gradesRaw?.courses || []
   const stats = gradesRaw?.stats || { overallGPA: "0.00", averagePercentage: "0.0", totalCredits: 0, activeCourses: 0 }
 
@@ -77,7 +119,7 @@ export default function StudentGradesPage() {
                 <p className="text-muted-foreground mt-1">Track your grades and performance across all courses</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
                   <Download className="h-4 w-4" />
                   Export
                 </Button>

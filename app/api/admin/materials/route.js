@@ -1,5 +1,5 @@
 import dbConnect from '@/dbConnect';
-import LearningMaterial from '@/models/LearningMaterial';
+import Material from '@/models/Material';
 import {
   adminAuthMiddleware,
   errorResponse,
@@ -24,23 +24,71 @@ export async function GET(req) {
     if (search) filter.title = { $regex: search, $options: 'i' };
     const type = searchParams.get('type');
     const course = searchParams.get('course');
-    if (type) filter.type = type;
+    if (type) {
+      let dbTypes = [type];
+      if (type.toLowerCase() === 'slides') dbTypes.push('Presentation');
+      if (type.toLowerCase() === 'document') dbTypes.push('Other');
+      filter.type = { $in: dbTypes.map(t => new RegExp(`^${t}$`, 'i')) };
+    }
     if (course) filter.course = course;
 
-    const total = await LearningMaterial.countDocuments(filter);
-    const materials = await LearningMaterial.find(filter)
-      .populate('course', 'name code')
-      .populate('uploadedBy', 'name email')
+    const total = await Material.countDocuments(filter);
+    const materials = await Material.find(filter)
+      .populate('instructor', 'name email')
       .sort({ [sortBy]: sortOrder })
       .limit(limit)
       .skip((page - 1) * limit)
       .lean();
 
+    const AssignedClass = (await import('@/models/AssignedClass')).default;
+    const CourseModel = (await import('@/models/Course')).default;
+    const enriched = await Promise.all(
+      materials.map(async (m) => {
+        let courseInfo = null;
+        const rawMaterial = await Material.findById(m._id).select('course').lean();
+        if (rawMaterial && rawMaterial.course) {
+          const assignedClass = await AssignedClass.findById(rawMaterial.course)
+            .populate('classId', 'program className semester')
+            .lean();
+          if (assignedClass) {
+            const classInfo = assignedClass.classId;
+            courseInfo = {
+              _id: assignedClass._id,
+              code: classInfo ? `${classInfo.program} Sec ${assignedClass.section}` : `Sec ${assignedClass.section}`,
+              name: assignedClass.subject || classInfo?.className || 'N/A',
+            };
+          } else {
+            const stdCourse = await CourseModel.findById(rawMaterial.course).select('name code').lean();
+            if (stdCourse) {
+              courseInfo = {
+                _id: stdCourse._id,
+                code: stdCourse.code,
+                name: stdCourse.name,
+              };
+            }
+          }
+        }
+        
+        let mappedType = m.type || 'Other';
+        if (mappedType === 'Presentation') mappedType = 'Slides';
+        if (mappedType === 'Other') mappedType = 'Document';
+
+        return {
+          ...m,
+          course: courseInfo,
+          type: mappedType,
+          uploadedBy: m.instructor,
+          downloads: m.stats || 0,
+        };
+      })
+    );
+
     return successResponse(
-      { materials, pagination: calculatePagination(total, page, limit) },
+      { materials: enriched, pagination: calculatePagination(total, page, limit) },
       'Learning materials retrieved successfully'
     );
   } catch (error) {
+    console.error("Admin GET materials error:", error);
     return errorResponse('Failed to retrieve materials', 'SERVER_ERROR', 500);
   }
 }
@@ -59,16 +107,16 @@ export async function POST(req) {
       return errorResponse('title, type, and course are required', 'VALIDATION_ERROR', 400);
     }
 
-    const material = await LearningMaterial.create({
+    const material = await Material.create({
       title: body.title,
       type: body.type,
       course: body.course,
-      uploadedBy: authResult.user.id,
+      instructor: authResult.user.id,
       fileUrl: body.fileUrl || '',
       size: body.size || '',
     });
 
-    await material.populate(['course', 'uploadedBy']);
+    await material.populate(['course', 'instructor']);
     return successResponse(material, 'Material uploaded successfully', 201);
   } catch (error) {
     const dbError = handleDbError(error);

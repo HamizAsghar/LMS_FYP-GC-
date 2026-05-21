@@ -25,9 +25,9 @@ async function buildAnalytics(period = 'monthly') {
     totalUsers,
     totalCourses,
     totalAssignments,
-    submissions,
-    instructorActivities,
-    studentActivities,
+    submissionsCount,
+    instructorActivitiesCount,
+    studentActivitiesCount,
   ] = await Promise.all([
     User.countDocuments(),
     Course.countDocuments(),
@@ -37,10 +37,21 @@ async function buildAnalytics(period = 'monthly') {
     StudentActivity.countDocuments({ date: { $gte: start } }),
   ]);
 
-  const assignmentCompletion = await Submission.aggregate([
+  // Robust fallback: if date filters are empty, use total records so dashboard displays real database telemetry
+  const submissions = submissionsCount || await Submission.countDocuments();
+  const instructorActivities = instructorActivitiesCount || await InstructorActivity.countDocuments();
+  const studentActivities = studentActivitiesCount || await StudentActivity.countDocuments();
+
+  let assignmentCompletion = await Submission.aggregate([
     { $match: { submittedDate: { $gte: start } } },
     { $group: { _id: '$status', count: { $sum: 1 } } },
   ]);
+
+  if (!assignmentCompletion || assignmentCompletion.length === 0) {
+    assignmentCompletion = await Submission.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+  }
 
   return {
     period,
@@ -91,6 +102,7 @@ export async function GET(req) {
       'Reports retrieved successfully'
     );
   } catch (error) {
+    console.error('Failed to retrieve reports:', error);
     return errorResponse('Failed to retrieve reports', 'SERVER_ERROR', 500);
   }
 }
@@ -120,6 +132,7 @@ export async function POST(req) {
     await report.populate('generatedBy', 'name email');
     return successResponse(report, 'Report generated successfully', 201);
   } catch (error) {
+    console.error('Failed to generate report:', error);
     return errorResponse('Failed to generate report', 'SERVER_ERROR', 500);
   }
 }

@@ -160,6 +160,20 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleClearAll = async () => {
+    try {
+      const res = await apiFetch('/api/admin/notifications', {
+        method: 'DELETE'
+      })
+      if (res.success) {
+        setNotificationsList([])
+        toast.success('All notifications cleared successfully')
+      }
+    } catch (err) {
+      toast.error('Failed to clear notifications')
+    }
+  }
+
   const filteredNotifications = notificationsList.filter(notification => {
     const matchesSearch = (notification.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (notification.message || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -193,9 +207,14 @@ export default function NotificationsPage() {
               {notification.title}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               <span className="text-xs text-muted-foreground">{formatTimeAgo(notification.createdAt)}</span>
               <Badge variant="outline" className="text-xs capitalize">{notification.type}</Badge>
+              {notification.user && (
+                <Badge variant="secondary" className="text-xs">
+                  For: {notification.user.name} ({notification.user.role})
+                </Badge>
+              )}
               {!notification.read && (
                 <Badge className="bg-primary text-primary-foreground text-xs">New</Badge>
               )}
@@ -346,7 +365,7 @@ export default function NotificationsPage() {
               <CheckCheck className="h-4 w-4" />
               Mark All Read
             </Button>
-            <Button variant="outline" className="gap-2 text-destructive hover:text-destructive" onClick={() => toast.info('Manual clearing coming soon')}>
+            <Button variant="outline" className="gap-2 text-destructive hover:text-destructive" onClick={handleClearAll}>
               <Trash2 className="h-4 w-4" />
               Clear All
             </Button>

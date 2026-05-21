@@ -186,10 +186,10 @@ export default function InstructorCoursesPage() {
             <p className="text-muted-foreground">Manage your courses, materials, and assignments</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <Button className="gap-2" onClick={handleOpenCreate}>
+            {/* <Button className="gap-2" onClick={handleOpenCreate}>
               <Plus className="w-4 h-4" />
               Create Course
-            </Button>
+            </Button> */}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingCourse ? 'Edit Course' : 'Create New Course'}</DialogTitle>

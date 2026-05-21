@@ -1,5 +1,6 @@
 import dbConnect from '@/dbConnect';
 import Course from '@/models/Course';
+import AssignedClass from '@/models/AssignedClass';
 import Assignment from '@/models/Assignment';
 import Material from '@/models/Material';
 import Submission from '@/models/Submission';
@@ -15,9 +16,28 @@ export async function GET(req, { params }) {
     await dbConnect();
     const { id } = params;
 
-    const course = await Course.findById(id)
+    let course = await Course.findById(id)
       .populate('instructor', 'name email department')
       .lean();
+
+    if (!course) {
+      const assignedClass = await AssignedClass.findById(id)
+        .populate('teacherId', 'name email department')
+        .populate('classId', 'program className semester')
+        .lean();
+      
+      if (assignedClass) {
+        course = {
+          _id: assignedClass._id,
+          name: assignedClass.subject,
+          code: assignedClass.classId?.className || 'CLASS',
+          semester: assignedClass.classId?.semester || 'Semester',
+          instructor: assignedClass.teacherId,
+          description: `Assigned Class for program ${assignedClass.classId?.program || ''}, section ${assignedClass.section || ''}`,
+          updatedAt: assignedClass.updatedAt
+        };
+      }
+    }
 
     if (!course) {
       return errorResponse('Course not found', 'NOT_FOUND', 404);

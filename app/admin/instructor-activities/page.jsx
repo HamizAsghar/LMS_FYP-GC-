@@ -81,6 +81,44 @@ export default function InstructorActivitiesPage() {
     emailResponses: a.emailResponses || 0
   }))
 
+  const handleExport = () => {
+    if (!activities || activities.length === 0) return
+
+    let csvContent = ""
+
+    // 1. Title & Metadata
+    csvContent += "INSTRUCTOR DAILY ACTIVITIES REPORT\n"
+    csvContent += `Generated on: ${new Date().toLocaleString()}\n`
+    csvContent += `Status Filter: ${filterStatus.toUpperCase()}\n`
+    csvContent += `Search Query: ${searchQuery || 'None'}\n\n`
+
+    // 2. High-level Statistics Tally
+    csvContent += "ACTIVITY STATISTICS OVERVIEW\n"
+    csvContent += "Activity Type,Total Logged Counts\n"
+    Object.entries(statistics).forEach(([type, count]) => {
+      csvContent += `"${type}",${count}\n`
+    });
+    csvContent += "\n"
+
+    // 3. Raw Activities Log Table
+    csvContent += "INSTRUCTOR ACTIVITIES DETAILED LOG\n"
+    csvContent += "Instructor Name,Activity Type,Action Count,Status,Activity Date,Remarks / Details\n"
+    activities.forEach(activity => {
+      csvContent += `"${activity.instructorName}","${activity.activityType}",${activity.count},"${activity.status}","${new Date(activity.date).toLocaleDateString()}","${activity.remarks || ''}"\n`
+    });
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Instructor_Activities_Report_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <Navbar 
@@ -222,8 +260,11 @@ export default function InstructorActivitiesPage() {
             type="date" 
             className="w-40"
             value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
           />
+          <Button variant="outline" className="gap-2 bg-card ml-auto" onClick={handleExport}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
 
         {/* Activities Table */}

@@ -12,6 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -132,92 +133,68 @@ export default function StudentAssignmentsPage() {
               {assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted' ? `Due: ${new Date(assignment.dueDate).toLocaleDateString()}` : `Submitted: ${new Date(assignment.submittedAt).toLocaleDateString()}`}
             </span>
           </div>
-          
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button 
-                variant={assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted' ? 'default' : 'outline'} 
-                size="sm"
-              >
-                {assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted' ? 'Submit' : 'View'}
+          {assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted' ? (
+            <Link href={`/student/submit-assignment?assignmentId=${assignment._id}`}>
+              <Button variant="default" size="sm">
+                Submit
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{assignment.title}</DialogTitle>
-                <DialogDescription>
-                  {assignment.course?.name} - {assignment.course?.code}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-muted-foreground">Description</Label>
-                  <p className="text-foreground mt-1">{assignment.description}</p>
-                </div>
+            </Link>
+          ) : (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  View
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{assignment.title}</DialogTitle>
+                  <DialogDescription>
+                    {assignment.course?.name} - {assignment.course?.code}
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
-                    <Label className="text-muted-foreground">Due Date</Label>
-                    <p className="text-foreground mt-1">{new Date(assignment.dueDate).toLocaleDateString()}</p>
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="text-foreground mt-1">{assignment.description}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Max Score</Label>
-                    <p className="text-foreground mt-1">{assignment.totalPoints || 100} points</p>
-                  </div>
-                </div>
-                
-                {assignment.submissionStatus === 'Graded' && (
-                  <>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-muted-foreground">Your Score</span>
-                        <span className={`text-2xl font-bold ${assignment.marksObtained >= (assignment.totalPoints * 0.8) ? 'text-green-500' : assignment.marksObtained >= (assignment.totalPoints * 0.6) ? 'text-yellow-500' : 'text-red-500'}`}>
-                          {assignment.marksObtained}/{assignment.totalPoints}
-                        </span>
-                      </div>
-                    </div>
-                    {assignment.feedback && (
-                      <div>
-                        <Label className="text-muted-foreground">Instructor Feedback</Label>
-                        <p className="text-foreground mt-1 p-3 bg-muted/50 rounded-lg">{assignment.feedback}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-                
-                {(assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted') && (
-                  <div className="space-y-4">
+                  
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Your Submission</Label>
-                      <Textarea 
-                        placeholder="Add any notes or comments..."
-                        className="mt-2"
-                        rows={3}
-                      />
+                      <Label className="text-muted-foreground">Due Date</Label>
+                      <p className="text-foreground mt-1">{new Date(assignment.dueDate).toLocaleDateString()}</p>
                     </div>
                     <div>
-                      <Label>Upload Files</Label>
-                      <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center">
-                        <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Drag and drop files here, or click to browse
-                        </p>
-                      </div>
+                      <Label className="text-muted-foreground">Max Score</Label>
+                      <p className="text-foreground mt-1">{assignment.totalPoints || 100} points</p>
                     </div>
                   </div>
-                )}
-              </div>
-              
-              {(assignment.submissionStatus === 'Pending' || assignment.submissionStatus === 'Not Submitted') && (
-                <DialogFooter>
-                  <Button variant="outline">Save Draft</Button>
-                  <Button onClick={() => toast.success('Assignment submitted!')}>Submit Assignment</Button>
-                </DialogFooter>
-              )}
-            </DialogContent>
-          </Dialog>
+                  
+                  {assignment.submissionStatus === 'Graded' && (
+                    <>
+                      <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-muted-foreground">Your Score</span>
+                          <span className={`text-2xl font-bold ${assignment.marksObtained >= (assignment.totalPoints * 0.8) ? 'text-green-500' : assignment.marksObtained >= (assignment.totalPoints * 0.6) ? 'text-yellow-500' : 'text-red-500'}`}>
+                            {assignment.marksObtained}/{assignment.totalPoints}
+                          </span>
+                        </div>
+                      </div>
+                      {assignment.feedback && (
+                        <div>
+                          <Label className="text-muted-foreground">Instructor Feedback</Label>
+                          <p className="text-foreground mt-1 p-3 bg-muted/50 rounded-lg">{assignment.feedback}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
         
         {assignment.submissionStatus === 'Graded' && (

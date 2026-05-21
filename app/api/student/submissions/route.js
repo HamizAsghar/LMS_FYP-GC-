@@ -24,13 +24,17 @@ export async function GET(req) {
           populate: { path: 'classId', select: 'program className semester' }
         }
       })
-      .sort({ submittedAt: -1 })
+      .sort({ submittedDate: -1 })
       .lean();
 
     // Enrich each submission with a stable `course.code` and `course.name`
     // derived from the AssignedClass → Class chain
     const enriched = submissions.map(s => {
       const assignment = s.assignment;
+      if (assignment) {
+        assignment.totalPoints = assignment.totalMarks;
+        assignment.dueDate = assignment.deadline;
+      }
       const assignedClass = assignment?.course;
       const classInfo = assignedClass?.classId;
       const subject = assignedClass?.subject || '';
@@ -41,6 +45,8 @@ export async function GET(req) {
 
       return {
         ...s,
+        submittedAt: s.submittedDate || s.createdAt,
+        grade: s.marks,
         course: {
           _id: assignedClass?._id || null,
           code: program && section ? `${program} Sec ${section}` : 'N/A',
@@ -94,11 +100,27 @@ export async function POST(req) {
       assignment: assignmentId,
       student: authResult.user.id,
       course: assignment.course,
+      file: fileUrl,
       fileUrl,
       feedback: notes || '',
       status: 'Submitted',
       submittedDate: new Date()
     });
+
+    // Create real-time notification for the instructor
+    try {
+      const Notification = (await import('@/models/Notification')).default;
+      await Notification.create({
+        user: assignment.instructor,
+        type: 'submission',
+        title: 'New Assignment Submission',
+        message: `${authResult.user.name || 'A student'} submitted assignment "${assignment.title}".`,
+        timestamp: new Date(),
+        read: false
+      });
+    } catch (notifErr) {
+      console.error('Failed to create submission notification:', notifErr);
+    }
 
     return successResponse(submission, 'Assignment submitted successfully');
   } catch (error) {

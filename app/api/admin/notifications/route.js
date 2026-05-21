@@ -30,13 +30,21 @@ export async function GET(req) {
     }
     const type = searchParams.get('type');
     const read = searchParams.get('read');
-    if (type) filter.type = type;
-    if (read !== null && read !== '') filter.read = read === 'true';
+    if (type && type !== 'all') filter.type = type;
+    if (read !== null && read !== '' && read !== undefined) {
+      filter.read = read === 'true';
+    }
+
+    // Default to sorting by newest first
+    let sortOption = { createdAt: -1 };
+    if (sortBy && sortBy !== 'createdAt') {
+      sortOption = { [sortBy]: sortOrder };
+    }
 
     const total = await Notification.countDocuments(filter);
     const notifications = await Notification.find(filter)
       .populate('user', 'name email role')
-      .sort({ [sortBy]: sortOrder })
+      .sort(sortOption)
       .limit(limit)
       .skip((page - 1) * limit)
       .lean();
@@ -48,6 +56,7 @@ export async function GET(req) {
       'Notifications retrieved successfully'
     );
   } catch (error) {
+    console.error('Failed to retrieve notifications:', error);
     return errorResponse('Failed to retrieve notifications', 'SERVER_ERROR', 500);
   }
 }
@@ -95,5 +104,38 @@ export async function POST(req) {
   } catch (error) {
     const dbError = handleDbError(error);
     return errorResponse(dbError.message, dbError.error, dbError.status);
+  }
+}
+
+export async function PUT(req) {
+  try {
+    const authResult = await adminAuthMiddleware(req);
+    if (!authResult.success) {
+      return errorResponse(authResult.message, authResult.error, authResult.status);
+    }
+
+    await dbConnect();
+    const body = await req.json();
+    const read = body.read === true;
+
+    await Notification.updateMany({}, { $set: { read } });
+    return successResponse(null, 'All notifications marked as read successfully');
+  } catch (error) {
+    return errorResponse('Failed to update notifications', 'SERVER_ERROR', 500);
+  }
+}
+
+export async function DELETE(req) {
+  try {
+    const authResult = await adminAuthMiddleware(req);
+    if (!authResult.success) {
+      return errorResponse(authResult.message, authResult.error, authResult.status);
+    }
+
+    await dbConnect();
+    await Notification.deleteMany({});
+    return successResponse(null, 'All notifications cleared successfully');
+  } catch (error) {
+    return errorResponse('Failed to clear notifications', 'SERVER_ERROR', 500);
   }
 }

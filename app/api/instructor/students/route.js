@@ -55,9 +55,9 @@ export async function GET(req) {
         return id ? id.toString() : String(c);
       });
 
-      // Identify instructor-owned courses (Course model + instructor field)
-      const instructorCourseDocs = sCourses.filter(
-        c => c.instructor && c.instructor.toString() === instructorId.toString()
+      // Identify instructor-owned courses (Course model)
+      const instructorCourseDocs = courses.filter(
+        c => studentCourseIds.includes(c._id.toString())
       );
 
       // Identify instructor-owned assigned classes (from our map)

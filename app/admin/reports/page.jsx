@@ -17,6 +17,7 @@ import { Navbar } from '@/components/navbar'
 import { StatsCard } from '@/components/dashboard-components'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Tabs,
   TabsContent,
@@ -96,6 +97,47 @@ export default function ReportsPage() {
     }
   }
 
+  const handleExportExcel = () => {
+    if (!analytics) {
+      toast.error('No report data available to export')
+      return
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+    csvContent += "System Performance & Analytics Report\n"
+    csvContent += `Report Period,${selectedPeriod.toUpperCase()}\n`
+    csvContent += `Generated On,${new Date(analytics.generatedAt || new Date()).toLocaleString()}\n\n`
+
+    csvContent += "METRIC CARD OVERVIEW\n"
+    csvContent += "Metric Name,Value\n"
+    csvContent += `Total Assignments,${analytics.performanceCards?.totalAssignments || 0}\n`
+    csvContent += `Total Submissions,${analytics.performanceCards?.submissions || 0}\n`
+    csvContent += `Instructor Activities,${analytics.performanceCards?.instructorActivities || 0}\n`
+    csvContent += `Student Activities,${analytics.performanceCards?.studentActivities || 0}\n\n`
+
+    csvContent += "ASSIGNMENT COMPLETION STATUS BREAKDOWN\n"
+    csvContent += "Status,Count\n"
+    const comp = analytics.assignmentCompletion || []
+    comp.forEach(item => {
+      csvContent += `"${item._id || 'Pending'}",${item.count}\n`
+    })
+    csvContent += "\n"
+
+    csvContent += "ENGAGEMENT BY ROLE\n"
+    csvContent += "Role,Activity Count\n"
+    csvContent += `"Instructors",${analytics.performanceCards?.instructorActivities || 0}\n`
+    csvContent += `"Students",${analytics.performanceCards?.studentActivities || 0}\n`
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `admin_performance_report_${selectedPeriod}_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Performance report exported to Excel successfully!')
+  }
+
   const cards = analytics?.performanceCards || {}
   
   const stats = [
@@ -138,14 +180,18 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2">
-            <Button className="gap-2" onClick={handleGenerateReport}>
+          <div className="flex gap-2 flex-wrap">
+            {/* <Button className="gap-2" onClick={handleGenerateReport}>
               <Activity className="h-4 w-4" />
-              Generate & Save Report
+              Generate &amp; Save Report
+            </Button> */}
+            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleExportExcel}>
+              <Download className="h-4 w-4" />
+              Export Excel
             </Button>
-            <Button variant="outline" className="gap-2" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" />
-              Print View
+            <Button className="gap-2 bg-rose-600 hover:bg-rose-700 text-white" onClick={() => window.print()}>
+              <FileText className="h-4 w-4" />
+              Download PDF
             </Button>
           </div>
         </div>

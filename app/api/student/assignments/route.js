@@ -43,8 +43,11 @@ export async function GET(req) {
       const section = assignedClass?.section || '';
       const subject = assignedClass?.subject || '';
 
+      const aObj = a.toObject ? a.toObject() : a;
       return {
-        ...(a.toObject ? a.toObject() : a),
+        ...aObj,
+        totalPoints: aObj.totalMarks,
+        dueDate: aObj.deadline,
         course: {
           _id: assignedClass?._id || null,
           code: program && section ? `${program} Sec ${section}` : 'N/A',
@@ -66,7 +69,8 @@ export async function GET(req) {
         ...assignment,
         submissionStatus: submission ? submission.status : 'Not Submitted',
         marksObtained: submission ? submission.marks : null,
-        feedback: submission ? submission.feedback : null
+        feedback: submission ? submission.feedback : null,
+        submittedAt: submission ? (submission.submittedDate || submission.createdAt) : null
       };
     }));
 

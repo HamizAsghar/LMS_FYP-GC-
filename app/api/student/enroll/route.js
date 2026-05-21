@@ -47,6 +47,21 @@ export async function POST(req) {
       { new: true, upsert: true }
     );
 
+    // Notify the instructor who teaches this AssignedClass
+    try {
+      const Notification = (await import('@/models/Notification')).default;
+      await Notification.create({
+        user: assignedClass.teacherId,
+        type: 'system',
+        title: 'New Student Joined Class',
+        message: `${authResult.user.name || 'A student'} joined your class "${assignedClass.subject}".`,
+        timestamp: new Date(),
+        read: false
+      });
+    } catch (notifErr) {
+      console.error('Failed to create class enrollment notification:', notifErr);
+    }
+
     return NextResponse.json({ success: true, message: "Successfully enrolled in class", assignedClass }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

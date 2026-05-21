@@ -81,6 +81,21 @@ export async function PUT(req) {
       .populate('student', 'name email')
       .populate('assignment', 'title subject');
 
+    // Create instructor activity log
+    try {
+      const InstructorActivity = (await import('@/models/InstructorActivity')).default;
+      await InstructorActivity.create({
+        instructor: instructorId,
+        activityType: 'Assignment Marking',
+        count: 1,
+        status: 'Completed',
+        remarks: `Graded submission for "${submission.assignment.title}"`,
+        date: new Date()
+      });
+    } catch (actErr) {
+      console.error('Failed to log instructor marking activity:', actErr);
+    }
+
     // Notify student about the grade
     try {
       const Notification = (await import('@/models/Notification')).default;

@@ -3,6 +3,8 @@ import Assignment from '@/models/Assignment';
 import AssignedClass from '@/models/AssignedClass';
 import Course from '@/models/Course';
 import User from '@/models/User';
+import Student from '@/models/Student';
+import Submission from '@/models/Submission';
 import {
   adminAuthMiddleware,
   errorResponse,
@@ -50,26 +52,35 @@ export async function GET(req) {
       .lean();
 
     const now = new Date();
-    const enriched = assignments.map((a) => {
-      const assignedClass = a.course;
-      const classInfo = assignedClass?.classId;
-      return {
-        ...a,
-        course: {
-          _id: assignedClass?._id || null,
-          code: classInfo ? `${classInfo.program} Sec ${assignedClass.section}` : 'N/A',
-          name: assignedClass?.subject || classInfo?.className || 'N/A',
-          subject: assignedClass?.subject || '',
-          section: assignedClass?.section || '',
-        },
-        deadlineStatus:
-          new Date(a.deadline) < now
-            ? 'Overdue'
-            : new Date(a.deadline) - now < 86400000 * 3
-            ? 'Due Soon'
-            : 'On Track',
-      };
-    });
+    const enriched = await Promise.all(
+      assignments.map(async (a) => {
+        const assignedClass = a.course;
+        const classInfo = assignedClass?.classId;
+
+        // Fetch actual student enrollment & submission count for this assignment
+        const totalStudents = assignedClass?._id ? await Student.countDocuments({ courses: assignedClass._id }) : 0;
+        const submissionsCount = await Submission.countDocuments({ assignment: a._id });
+
+        return {
+          ...a,
+          course: {
+            _id: assignedClass?._id || null,
+            code: classInfo ? `${classInfo.program} Sec ${assignedClass.section}` : 'N/A',
+            name: assignedClass?.subject || classInfo?.className || 'N/A',
+            subject: assignedClass?.subject || '',
+            section: assignedClass?.section || '',
+          },
+          submissionsCount,
+          totalStudents,
+          deadlineStatus:
+            new Date(a.deadline) < now
+              ? 'Overdue'
+              : new Date(a.deadline) - now < 86400000 * 3
+              ? 'Due Soon'
+              : 'On Track',
+        };
+      })
+    );
 
     return successResponse(
       { assignments: enriched, pagination: calculatePagination(total, page, limit) },

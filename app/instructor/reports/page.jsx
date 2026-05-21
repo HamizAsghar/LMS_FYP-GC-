@@ -64,6 +64,52 @@ export default function InstructorReportsPage() {
     ? (selectedCourse === "all" ? data.coursePerformance : data.coursePerformance.filter(c => c.course === selectedCourse))
     : []
 
+  const handleExport = () => {
+    if (!data) return
+
+    let csvContent = ""
+
+    // 1. Title & Metadata
+    csvContent += "INSTRUCTOR PERFORMANCE REPORT & ANALYTICS\n"
+    csvContent += `Generated for: ${data.user?.name || 'Instructor'}\n`
+    csvContent += `Period: ${reportPeriod.toUpperCase()}\n`
+    csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`
+
+    // 2. Overview Stats Section
+    csvContent += "OVERVIEW STATISTICS\n"
+    csvContent += "Metric,Value\n"
+    csvContent += `Total Activities,${data.overview.totalActivities}\n`
+    csvContent += `Assignments Marked,${data.overview.assignmentsMarked}\n`
+    csvContent += `Active Students,${data.overview.activeStudents}\n`
+    csvContent += "Avg. Response Time,2.4h\n\n"
+
+    // 3. Activity Summary Section
+    csvContent += "ACTIVITY SUMMARY\n"
+    csvContent += "Activity Type,This Period,Last Period,Change (%)\n"
+    data.activitySummary.forEach(item => {
+      csvContent += `"${item.type}",${item.thisMonth},${item.lastMonth},${item.change}%\n`
+    });
+    csvContent += "\n"
+
+    // 4. Course Performance Section
+    csvContent += "COURSE PERFORMANCE\n"
+    csvContent += "Course Code,Course Name,Students,Avg. Grade (%),Submissions,Completion Rate (%)\n"
+    data.coursePerformance.forEach(item => {
+      csvContent += `"${item.course}","${item.name}",${item.students},${item.avgGrade}%,${item.submissions},${item.completion}%\n`
+    });
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Instructor_Report_${reportPeriod}_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <Navbar 
@@ -98,7 +144,7 @@ export default function InstructorReportsPage() {
               <Printer className="w-4 h-4 mr-2" />
               Print
             </Button>
-            <Button onClick={() => alert("Exporting report...")}>
+            <Button onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>

@@ -105,6 +105,43 @@ export default function ActivityLogsPage() {
     }
   }
 
+  const handleExport = () => {
+    if (logs.length === 0) {
+      toast.error('No activities to export')
+      return
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+    csvContent += "Activity Log Report\n"
+    csvContent += `Generated On,${new Date().toLocaleString()}\n`
+    csvContent += `Search Query,${searchQuery || 'None'}\n`
+    csvContent += `Action Filter,${filterAction}\n`
+    csvContent += `Role Filter,${filterRole}\n\n`
+    
+    csvContent += "User Name,User Email,Role,Action,Target,Timestamp,IP Address\n"
+
+    logs.forEach(log => {
+      const name = (log.user?.name || 'System').replace(/,/g, " ")
+      const email = (log.user?.email || 'N/A').replace(/,/g, " ")
+      const role = (log.role || 'N/A').replace(/,/g, " ")
+      const action = (log.action || '').replace(/,/g, " ")
+      const target = (log.target || '').replace(/,/g, " ")
+      const timestamp = formatTimestamp(log.timestamp).replace(/,/g, " ")
+      const ip = (log.ipAddress || '—').replace(/,/g, " ")
+
+      csvContent += `"${name}","${email}","${role}","${action}","${target}","${timestamp}","${ip}"\n`
+    })
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `activity_logs_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Activity logs exported successfully')
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchLogs()
@@ -223,7 +260,7 @@ export default function ActivityLogsPage() {
               <SelectItem value="Student">Student</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2" onClick={() => toast.info('Exporting...')}>
+          <Button variant="outline" className="gap-2" onClick={handleExport}>
             <Download className="h-4 w-4" />
             Export
           </Button>
