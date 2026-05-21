@@ -118,20 +118,6 @@ export default function StudentReportsPage() {
                 <p className="text-muted-foreground">Track your academic performance and progress</p>
               </div>
               <div className="flex gap-2">
-                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fall2024">Fall 2024</SelectItem>
-                    <SelectItem value="spring2024">Spring 2024</SelectItem>
-                    <SelectItem value="fall2023">Fall 2023</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline">
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print
-                </Button>
                 <Button onClick={handleExport}>
                   <Download className="w-4 h-4 mr-2" />
                   Export
@@ -175,37 +161,6 @@ export default function StudentReportsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Performance Trend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Trend</CardTitle>
-                  <CardDescription>Your average scores over the semester</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {performanceTrend.map((item, index) => (
-                      <div key={item.month} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{item.month}</span>
-                          <span className="text-muted-foreground">{item.score}%</span>
-                        </div>
-                        <div className="h-3 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all ${
-                              item.score >= 80 ? 'bg-green-500' : item.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${item.score}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 mt-6 text-sm text-green-600">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>Your performance is being tracked monthly</span>
-                  </div>
-                </CardContent>
-              </Card>
 
               {/* Course Progress */}
               <Card>
@@ -259,10 +214,11 @@ export default function StudentReportsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Courses</SelectItem>
-                  <SelectItem value="CS101">CS101 - Programming</SelectItem>
-                  <SelectItem value="CS201">CS201 - Data Structures</SelectItem>
-                  <SelectItem value="CS301">CS301 - Databases</SelectItem>
-                  <SelectItem value="CS401">CS401 - Machine Learning</SelectItem>
+                  {courseProgress.map((course) => (
+                    <SelectItem key={course.course} value={course.course}>
+                      {course.course} - {course.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -320,7 +276,7 @@ export default function StudentReportsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:border-primary transition-colors">
+          {/* <Card className="cursor-pointer hover:border-primary transition-colors">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
@@ -332,8 +288,8 @@ export default function StudentReportsPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:border-primary transition-colors">
+          </Card> */}
+          {/* <Card className="cursor-pointer hover:border-primary transition-colors">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -345,7 +301,7 @@ export default function StudentReportsPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
         </>
         )}

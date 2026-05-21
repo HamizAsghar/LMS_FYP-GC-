@@ -46,7 +46,6 @@ export default function AdminDashboard() {
     { title: "Total Users", value: (adminStats.totalUsers ?? 0).toLocaleString(), icon: Users, trend: "+12.5%", description: "from last month" },
     { title: "Total Instructors", value: (adminStats.totalInstructors ?? 0).toLocaleString(), icon: GraduationCap, trend: "+5.2%", description: "from last month" },
     { title: "Total Students", value: (adminStats.totalStudents ?? 0).toLocaleString(), icon: Users, trend: "+15.3%", description: "from last month" },
-    { title: "Total Courses", value: (adminStats.totalCourses ?? 0).toLocaleString(), icon: BookOpen, trend: "+8.1%", description: "from last month" },
     { title: "Total Activities", value: (adminStats.totalActivities ?? 0).toLocaleString(), icon: Activity, trend: "+22.4%", description: "from last month" },
     { title: "Pending Tasks", value: (adminStats.pendingTasks ?? 0).toLocaleString(), icon: Clock, trend: "-3.2%", trendUp: false, description: "from last week" },
   ]

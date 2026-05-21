@@ -103,6 +103,7 @@ export default function InstructorProfilePage() {
     <div className="flex-1 flex flex-col min-h-screen">
       <Navbar 
         title="My Profile" 
+
         userRole="Instructor"
         userName={profile.name}
         breadcrumbs={[
@@ -166,35 +167,6 @@ export default function InstructorProfilePage() {
               <p className="text-sm text-primary mt-1">{profile.department}</p>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-border space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BookOpen className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Courses</p>
-                  <p className="font-medium text-foreground">{profile.courses}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <User className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="font-medium text-foreground">{profile.totalStudents}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Award className="w-4 h-4 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Publications</p>
-                  <p className="font-medium text-foreground">{profile.publications}</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Details */}

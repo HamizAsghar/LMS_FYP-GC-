@@ -25,6 +25,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function StudentActivitiesPage() {
   const [activities, setActivities] = useState([])
+  const [summaryData, setSummaryData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -39,6 +40,11 @@ export default function StudentActivitiesPage() {
       const res = await apiFetch(url)
       if (res.success) {
         setActivities(res.data.activities)
+      }
+      
+      const summaryRes = await apiFetch('/api/admin/student-activities/summary')
+      if (summaryRes.success) {
+        setSummaryData(summaryRes.data)
       }
     } catch (err) {
       if (err?.status !== 401 && err?.status !== 403) {
@@ -57,18 +63,13 @@ export default function StudentActivitiesPage() {
   }, [searchQuery, filterStatus])
 
   const totalStats = {
-    submissions: activities.reduce((acc, a) => acc + (a.assignmentSubmission || 0), 0),
-    avgAttendance: activities.length > 0 ? Math.round(activities.reduce((acc, a) => acc + (a.attendance || 0), 0) / activities.length) : 0,
-    downloads: activities.reduce((acc, a) => acc + (a.materialDownloads || 0), 0),
-    quizAttempts: activities.reduce((acc, a) => acc + (a.quizAttempts || 0), 0),
+    submissions: summaryData?.totalSubmissions || 0,
+    avgAttendance: summaryData?.averageAttendance || 0,
+    downloads: summaryData?.totalDownloads || 0,
+    quizAttempts: summaryData?.totalQuizAttempts || 0,
   }
 
-  const chartData = activities.slice(0, 10).map(a => ({
-    name: a.studentName.split(' ')[0],
-    submissions: a.assignmentSubmission || 0,
-    downloads: a.materialDownloads || 0,
-    quizAttempts: a.quizAttempts || 0
-  }))
+  const chartData = summaryData?.chartData || []
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
@@ -86,9 +87,7 @@ export default function StudentActivitiesPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatsCard title="Total Submissions" value={totalStats.submissions} icon={Users} />
-          <StatsCard title="Avg Attendance" value={`${totalStats.avgAttendance}%`} icon={Users} />
           <StatsCard title="Material Downloads" value={totalStats.downloads} icon={Users} />
-          <StatsCard title="Quiz Attempts" value={totalStats.quizAttempts} icon={Users} />
         </div>
 
         {/* Chart */}
@@ -105,15 +104,19 @@ export default function StudentActivitiesPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorSub" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorOnTime" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    </linearGradient>
+                    <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8}/>
+                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3}/>
                     </linearGradient>
                     <linearGradient id="colorDown" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
                       <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3}/>
                     </linearGradient>
-                    <linearGradient id="colorQuiz" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorNotDown" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
                       <stop offset="100%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3}/>
                     </linearGradient>
@@ -151,29 +154,38 @@ export default function StudentActivitiesPage() {
                     wrapperStyle={{ fontSize: '12px', paddingBottom: '20px' }}
                   />
                   <Bar 
-                    dataKey="submissions" 
-                    fill="url(#colorSub)" 
-                    name="Submissions" 
+                    dataKey="onTimeSubmissions" 
+                    fill="url(#colorOnTime)" 
+                    name="On Time Submissions" 
                     radius={[6, 6, 0, 0]} 
-                    barSize={30}
+                    barSize={20}
                     stroke="hsl(var(--primary))"
+                    strokeWidth={1}
+                  />
+                  <Bar 
+                    dataKey="lateSubmissions" 
+                    fill="url(#colorLate)" 
+                    name="Late Submissions" 
+                    radius={[6, 6, 0, 0]} 
+                    barSize={20}
+                    stroke="hsl(var(--destructive))"
                     strokeWidth={1}
                   />
                   <Bar 
                     dataKey="downloads" 
                     fill="url(#colorDown)" 
-                    name="Downloads" 
+                    name="Downloaded Materials" 
                     radius={[6, 6, 0, 0]} 
-                    barSize={30}
+                    barSize={20}
                     stroke="hsl(var(--chart-2))"
                     strokeWidth={1}
                   />
                   <Bar 
-                    dataKey="quizAttempts" 
-                    fill="url(#colorQuiz)" 
-                    name="Quiz Attempts" 
+                    dataKey="notDownloaded" 
+                    fill="url(#colorNotDown)" 
+                    name="Not Downloaded" 
                     radius={[6, 6, 0, 0]} 
-                    barSize={30}
+                    barSize={20}
                     stroke="hsl(var(--chart-3))"
                     strokeWidth={1}
                   />
@@ -200,8 +212,6 @@ export default function StudentActivitiesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
           <Input 
