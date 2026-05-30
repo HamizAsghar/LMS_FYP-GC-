@@ -11,13 +11,15 @@ import {
   FileText,
   Activity,
   GraduationCap,
-  Eye
+  Eye,
+  Search
 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
-import { StatsCard } from '@/components/dashboard-components'
+import { StatsCard, StatusBadge } from '@/components/dashboard-components'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Tabs,
   TabsContent,
@@ -53,6 +55,8 @@ export default function ReportsPage() {
   const [analytics, setAnalytics] = useState(null)
   const [reportsList, setReportsList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activitiesSearchQuery, setActivitiesSearchQuery] = useState('')
+  const [activitiesTypeFilter, setActivitiesTypeFilter] = useState('all')
 
   const fetchAnalytics = async () => {
     try {
@@ -126,7 +130,21 @@ export default function ReportsPage() {
     csvContent += "ENGAGEMENT BY ROLE\n"
     csvContent += "Role,Activity Count\n"
     csvContent += `"Instructors",${analytics.performanceCards?.instructorActivities || 0}\n`
-    csvContent += `"Students",${analytics.performanceCards?.studentActivities || 0}\n`
+    csvContent += `"Students",${analytics.performanceCards?.studentActivities || 0}\n\n`
+
+    csvContent += "STUDENT DETAILED ACTIVITIES\n"
+    csvContent += "Student Name,Student Email,Activity Type,Item Name,Status,Date,Remarks\n"
+    const detailedActs = analytics.studentActivitiesList || []
+    detailedActs.forEach(act => {
+      const dateStr = new Date(act.date).toLocaleString().replace(/,/g, '')
+      const name = (act.studentName || '').replace(/"/g, '""')
+      const email = (act.studentEmail || '').replace(/"/g, '""')
+      const type = (act.activityType || '').replace(/"/g, '""')
+      const item = (act.itemName || '').replace(/"/g, '""')
+      const status = (act.status || '').replace(/"/g, '""')
+      const remarks = (act.remarks || '').replace(/"/g, '""')
+      csvContent += `"${name}","${email}","${type}","${item}","${status}","${dateStr}","${remarks}"\n`
+    })
 
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
@@ -152,6 +170,19 @@ export default function ReportsPage() {
     value: s.count,
     color: s._id === 'Graded' ? '#22c55e' : s._id === 'Submitted' ? '#3b82f6' : '#f59e0b'
   }))
+
+  const detailedActivities = analytics?.studentActivitiesList || []
+  const filteredActivities = detailedActivities.filter(act => {
+    const matchesSearch = 
+      (act.studentName || '').toLowerCase().includes(activitiesSearchQuery.toLowerCase()) ||
+      (act.studentEmail || '').toLowerCase().includes(activitiesSearchQuery.toLowerCase()) ||
+      (act.itemName || '').toLowerCase().includes(activitiesSearchQuery.toLowerCase()) ||
+      (act.remarks || '').toLowerCase().includes(activitiesSearchQuery.toLowerCase())
+
+    const matchesType = activitiesTypeFilter === 'all' || act.activityType === activitiesTypeFilter
+
+    return matchesSearch && matchesType
+  })
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
@@ -207,7 +238,7 @@ export default function ReportsPage() {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Live Analytics</TabsTrigger>
-            <TabsTrigger value="history">Report History</TabsTrigger>
+            <TabsTrigger value="activities">Student Activities</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -268,8 +299,8 @@ export default function ReportsPage() {
                         { name: 'Students', value: cards.studentActivities || 0 }
                       ]}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={14} tick={{ fill: "#fff" }} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: "#fff" }} />
                         <Tooltip 
                           contentStyle={{ 
                             backgroundColor: 'hsl(var(--card))', 
@@ -284,6 +315,102 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="activities" className="space-y-6">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      Detailed Student Activities
+                    </CardTitle>
+                    <CardDescription>
+                      Detailed logs of student submissions, downloads, and other events in the selected period.
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search student or item..."
+                        className="pl-10 h-9"
+                        value={activitiesSearchQuery}
+                        onChange={(e) => setActivitiesSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <Select value={activitiesTypeFilter} onValueChange={setActivitiesTypeFilter}>
+                      <SelectTrigger className="w-full sm:w-44 h-9">
+                        <SelectValue placeholder="All Activity Types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Activity Types</SelectItem>
+                        <SelectItem value="Assignment Submission">Assignment Submission</SelectItem>
+                        <SelectItem value="Material Download">Material Download</SelectItem>
+                        <SelectItem value="Attendance">Attendance</SelectItem>
+                        <SelectItem value="Quiz Attempt">Quiz Attempt</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Student</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Activity Type</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Details / Item</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredActivities.map((act) => (
+                        <tr key={act.id} className="border-b border-border/50 hover:bg-muted/50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                                {act.studentName.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="font-medium text-foreground">{act.studentName}</div>
+                                <div className="text-xs text-muted-foreground">{act.studentEmail}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant={act.activityType === 'Assignment Submission' ? 'default' : 'outline'} className="text-xs">
+                              {act.activityType}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-foreground font-medium">{act.itemName}</td>
+                          <td className="py-3 px-4">
+                            <StatusBadge status={act.status} />
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground text-sm">
+                            {new Date(act.date).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground max-w-[200px] truncate" title={act.remarks}>
+                            {act.remarks || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredActivities.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                            No student activities found for this period.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">

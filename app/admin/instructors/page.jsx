@@ -276,9 +276,6 @@ export default function AdminInstructorsPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatsCard title="Total Instructors" value={stats.total} icon={GraduationCap} />
           <StatsCard title="Active" value={stats.active} icon={Users} trend="+5%" />
-          <StatsCard title="Total Courses" value={stats.totalCourses} icon={BookOpen} />
-          <StatsCard title="Total Students" value={stats.totalStudents} icon={Users} trend="+12%" />
-          <StatsCard title="Avg Rating" value={stats.avgRating} icon={Star} trend="+0.2" />
         </div>
 
         {/* Header Actions */}

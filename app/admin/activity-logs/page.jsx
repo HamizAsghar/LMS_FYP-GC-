@@ -118,7 +118,7 @@ export default function ActivityLogsPage() {
     csvContent += `Action Filter,${filterAction}\n`
     csvContent += `Role Filter,${filterRole}\n\n`
     
-    csvContent += "User Name,User Email,Role,Action,Target,Timestamp,IP Address\n"
+    csvContent += "User Name,User Email,Role,Action,Target,Timestamp,\n"
 
     logs.forEach(log => {
       const name = (log.user?.name || 'System').replace(/,/g, " ")
@@ -282,7 +282,7 @@ export default function ActivityLogsPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Action</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Target</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Timestamp</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">IP Address</th>
+                    {/* <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">IP Address</th> */}
                   </tr>
                 </thead>
                 <tbody>

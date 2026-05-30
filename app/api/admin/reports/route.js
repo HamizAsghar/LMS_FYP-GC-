@@ -28,6 +28,8 @@ async function buildAnalytics(period = 'monthly') {
     submissionsCount,
     instructorActivitiesCount,
     studentActivitiesCount,
+    submissionsList,
+    activitiesList,
   ] = await Promise.all([
     User.countDocuments(),
     Course.countDocuments(),
@@ -35,23 +37,52 @@ async function buildAnalytics(period = 'monthly') {
     Submission.countDocuments({ submittedDate: { $gte: start } }),
     InstructorActivity.countDocuments({ date: { $gte: start } }),
     StudentActivity.countDocuments({ date: { $gte: start } }),
+    Submission.find({ submittedDate: { $gte: start } })
+      .populate('student', 'name email')
+      .populate('assignment', 'title')
+      .sort({ submittedDate: -1 })
+      .lean(),
+    StudentActivity.find({
+      date: { $gte: start },
+      activityType: { $ne: 'Assignment Submission' } // Avoid duplicate logs
+    })
+      .populate('student', 'name email')
+      .sort({ date: -1 })
+      .lean(),
   ]);
 
-  // Robust fallback: if date filters are empty, use total records so dashboard displays real database telemetry
-  const submissions = submissionsCount || await Submission.countDocuments();
-  const instructorActivities = instructorActivitiesCount || await InstructorActivity.countDocuments();
-  const studentActivities = studentActivitiesCount || await StudentActivity.countDocuments();
+  const submissions = submissionsCount;
+  const instructorActivities = instructorActivitiesCount;
+  // Combine submission counts and other student activities for total student activities count
+  const studentActivities = submissionsCount + studentActivitiesCount;
 
-  let assignmentCompletion = await Submission.aggregate([
+  const assignmentCompletion = await Submission.aggregate([
     { $match: { submittedDate: { $gte: start } } },
     { $group: { _id: '$status', count: { $sum: 1 } } },
   ]);
 
-  if (!assignmentCompletion || assignmentCompletion.length === 0) {
-    assignmentCompletion = await Submission.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
-  }
+  const studentActivitiesList = [
+    ...submissionsList.map(s => ({
+      id: s._id.toString(),
+      studentName: s.student?.name || 'Unknown',
+      studentEmail: s.student?.email || '',
+      activityType: 'Assignment Submission',
+      itemName: s.assignment?.title || 'Unknown Assignment',
+      status: s.status || 'Submitted',
+      date: s.submittedDate || s.createdAt,
+      remarks: s.feedback || `Submitted assignment "${s.assignment?.title || ''}"`
+    })),
+    ...activitiesList.map(a => ({
+      id: a._id.toString(),
+      studentName: a.student?.name || 'Unknown',
+      studentEmail: a.student?.email || '',
+      activityType: a.activityType,
+      itemName: a.value || 'N/A',
+      status: a.status || 'Completed',
+      date: a.date || a.createdAt,
+      remarks: a.remarks || `${a.activityType}: ${a.value || ''}`
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return {
     period,
@@ -65,6 +96,7 @@ async function buildAnalytics(period = 'monthly') {
     },
     activityTrends: { instructorActivities, studentActivities },
     assignmentCompletion,
+    studentActivitiesList,
     generatedAt: now,
   };
 }

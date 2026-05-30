@@ -75,7 +75,7 @@ export async function GET(req) {
       
       const downloads = acts
         .filter((a) => a.activityType === 'Material Download')
-        .reduce((s, a) => s + (Number(a.value) || 0), 0);
+        .length;
         
       const notDownloaded = Math.max(0, totalMaterialsAvailable - downloads);
       

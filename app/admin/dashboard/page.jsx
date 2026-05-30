@@ -206,12 +206,14 @@ export default function AdminDashboard() {
                       fontSize={12} 
                       axisLine={false}
                       tickLine={false}
+                      tick={{ fill: "#fff" }}
                     />
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))" 
                       fontSize={12} 
                       axisLine={false}
                       tickLine={false}
+                       tick={{ fill: "#fff" }}
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -384,15 +386,22 @@ export default function AdminDashboard() {
               </CardTitle>
               <CardDescription>Assignment submission trends</CardDescription>
             </div>
-            <Button variant="outline" size="sm">View All</Button>
+            {/* <Button variant="outline" size="sm">View All</Button> */}
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={performanceChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <XAxis
+  dataKey="month"
+  stroke="#fff"
+  tick={{ fill: "#fff", fontSize: 16 }}
+/>
+                 <YAxis
+  stroke="#fff"
+  tick={{ fill: "#fff", fontSize: 14 }}
+/>
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 

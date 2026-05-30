@@ -87,7 +87,6 @@ export default function StudentActivitiesPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatsCard title="Total Submissions" value={totalStats.submissions} icon={Users} />
-          <StatsCard title="Material Downloads" value={totalStats.downloads} icon={Users} />
         </div>
 
         {/* Chart */}
@@ -122,18 +121,24 @@ export default function StudentActivitiesPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
+                  <XAxis
+  dataKey="name"
+  axisLine={false}
+  tickLine={false}
+  dy={14}
+  tick={{
+    fill: "#fff",
+    fontSize:14,
+  }}
+/>
+                  <YAxis
+  axisLine={false}
+  tickLine={false}
+  tick={{
+    fill: "#fff",
+    fontSize: 14
+  }}
+/>
                   <Tooltip 
                     cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
                     contentStyle={{ 
@@ -206,20 +211,7 @@ export default function StudentActivitiesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input 
-            type="date" 
-            className="w-40"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-          />
+      
         </div>
 
         {/* Activities Table */}

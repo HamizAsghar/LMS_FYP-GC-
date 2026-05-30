@@ -122,6 +122,21 @@ export async function POST(req) {
       console.error('Failed to create submission notification:', notifErr);
     }
 
+    // Create StudentActivity log
+    try {
+      const StudentActivity = (await import('@/models/StudentActivity')).default;
+      await StudentActivity.create({
+        student: authResult.user.id,
+        activityType: 'Assignment Submission',
+        value: assignment.title,
+        status: 'Completed',
+        date: new Date(),
+        remarks: `Submitted assignment "${assignment.title}"`
+      });
+    } catch (actErr) {
+      console.error('Failed to create StudentActivity for submission:', actErr);
+    }
+
     return successResponse(submission, 'Assignment submitted successfully');
   } catch (error) {
     console.error('Submissions POST error:', error);
